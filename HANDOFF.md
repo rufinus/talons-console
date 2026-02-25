@@ -8,6 +8,20 @@ Passed to each Daedalus worker as context. Keep slim.
 - Module: `github.com/rufinus/talons-console`
 - Commit and push after EACH task: `git pull --rebase origin feature/mvp && git push origin feature/mvp`
 
+## ⚠️ CRITICAL: Git Author — HARD REQUIREMENT
+Every commit MUST use Ludwig's identity. Run this FIRST before any commit:
+```bash
+git -C ~/workspace/projects/talons-console config user.name "Ludwig Ruderstaller"
+git -C ~/workspace/projects/talons-console config user.email "lr@cwd.at"
+```
+Or use `--author` on every commit:
+```bash
+git commit --author="Ludwig Ruderstaller <lr@cwd.at>" -m "..."
+```
+- NO "Co-Authored-By" trailers
+- NO agent attribution of any kind
+- Violation = removal from project
+
 ## Design Docs
 - `concepts/mvp/design.md` — architecture, interfaces, directory structure
 - `concepts/mvp/protocol-research.md` — OpenClaw WebSocket protocol
