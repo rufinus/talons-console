@@ -130,37 +130,3 @@ func sendConnectRequest(conn WebSocketConn, auth AuthConfig) error {
 
 	return conn.WriteMessage(websocket.TextMessage, data)
 }
-
-// waitForChallenge reads events from conn until a KindChallenge is received.
-// Non-challenge events are discarded. Exported for testing.
-func waitForChallenge(ctx context.Context, conn WebSocketConn) error {
-	for {
-		evt, err := readEvent(ctx, conn)
-		if err != nil {
-			return err
-		}
-		if evt.Kind == KindChallenge {
-			return nil
-		}
-	}
-}
-
-// readAuthResult reads the next event and expects KindAuthResult.
-// Returns ErrAuthFailed if auth was denied. Exported for testing.
-func readAuthResult(ctx context.Context, conn WebSocketConn) (InboundEvent, error) {
-	evt, err := readEvent(ctx, conn)
-	if err != nil {
-		return InboundEvent{}, err
-	}
-	switch evt.Kind {
-	case KindAuthResult:
-		if !evt.Success {
-			return InboundEvent{}, ErrAuthFailed
-		}
-		return evt, nil
-	case KindError:
-		return InboundEvent{}, fmt.Errorf("%w: %s", ErrAuthFailed, evt.Error)
-	default:
-		return InboundEvent{}, fmt.Errorf("expected auth result, got kind %d", evt.Kind)
-	}
-}
