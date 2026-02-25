@@ -5,33 +5,6 @@ import (
 	"time"
 )
 
-// OutboundMessage is a message sent to the Gateway.
-type OutboundMessage struct {
-	Type    string `json:"type"`
-	Payload any    `json:"payload,omitempty"`
-}
-
-// InboundEvent is an event received from the Gateway.
-type InboundEvent struct {
-	Kind    InboundKind
-	Raw     []byte
-	Payload any
-}
-
-// InboundKind identifies the type of an inbound Gateway event.
-type InboundKind int
-
-const (
-	KindUnknown     InboundKind = iota // unrecognized message type
-	KindToken                          // streaming token
-	KindMessage                        // complete message
-	KindAuthResult                     // authentication result
-	KindError                          // error event
-	KindToolCall                       // tool call event
-	KindSessionInfo                    // session metadata
-	KindHistory                        // history entry
-)
-
 // GatewayClient abstracts all Gateway WebSocket operations.
 // The TUI layer depends only on this interface, never on concrete WebSocket types.
 type GatewayClient interface {
