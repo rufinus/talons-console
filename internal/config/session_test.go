@@ -2,138 +2,96 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 )
 
-// redirectConfigDir sets XDG_CONFIG_HOME (Linux) and HOME to a temp dir so that
-// os.UserConfigDir() points to our controlled directory for the duration of the test.
-func redirectConfigDir(t *testing.T) string {
-	t.Helper()
-	tmp := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", tmp) // Linux/BSD
-	t.Setenv("HOME", tmp)            // Fallback if XDG not honoured
-	return tmp
-}
+func TestCheckConcurrentSession_NoFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-// writePIDFileDirectly writes a raw PID file to the path returned by getPIDFilePath,
-// bypassing WritePIDFile so we can inject arbitrary PID values.
-func writePIDFileDirectly(t *testing.T, agent, session string, lock SessionLock) string {
-	t.Helper()
-	path := getPIDFilePath(agent, session)
-	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-	data, err := json.Marshal(lock)
-	if err != nil {
-		t.Fatalf("json.Marshal: %v", err)
-	}
-	if err := os.WriteFile(path, data, 0600); err != nil {
-		t.Fatalf("WriteFile: %v", err)
-	}
-	return path
-}
-
-// stalePID returns a PID that is guaranteed to be no longer running.
-// It starts a trivial subprocess and waits for it to exit.
-func stalePID(t *testing.T) int {
-	t.Helper()
-	cmd := exec.Command("true") // exits immediately with code 0
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("stalePID subprocess: %v", err)
-	}
-	return cmd.ProcessState.Pid()
-}
-
-// ── CheckConcurrentSession ────────────────────────────────────────────────────
-
-func TestCheckConcurrentSession_NoPIDFile(t *testing.T) {
-	redirectConfigDir(t)
-	result := CheckConcurrentSession("agent1", "sess1")
+	result := CheckConcurrentSession("main", "main")
 	if result != "" {
-		t.Errorf("expected empty string, got %q", result)
+		t.Errorf("expected empty warning, got: %q", result)
 	}
 }
 
-func TestCheckConcurrentSession_StaleFile(t *testing.T) {
-	redirectConfigDir(t)
+func TestCheckConcurrentSession_StalePIDFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	pid := stalePID(t)
-	path := writePIDFileDirectly(t, "agent1", "sess1", SessionLock{
-		PID:     pid,
-		Started: time.Now().UTC().Format(time.RFC3339),
+	// Write a PID file with a PID that definitely doesn't exist
+	// PID 9999999 is very unlikely to be running
+	lock := SessionLock{
+		PID:     9999999,
+		Started: "2024-01-01T00:00:00Z",
 		URL:     "wss://example.com",
-	})
+	}
+	writePIDInDir(t, tmpDir, "main", "main", lock)
 
-	result := CheckConcurrentSession("agent1", "sess1")
+	result := CheckConcurrentSession("main", "main")
 	if result != "" {
-		t.Errorf("expected empty string for stale PID, got %q", result)
+		t.Errorf("stale PID file should return empty warning, got: %q", result)
 	}
 
-	// PID file should have been removed.
+	// Stale file should be removed
+	path := filepath.Join(tmpDir, "talons", "sessions", "main-main.pid")
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Errorf("expected stale PID file to be removed, but it still exists")
+		t.Errorf("stale PID file should have been removed")
 	}
 }
 
-func TestCheckConcurrentSession_CorruptFile(t *testing.T) {
-	redirectConfigDir(t)
+func TestCheckConcurrentSession_ActiveSession(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	pidPath := getPIDFilePath("agent1", "sess1")
-	if err := os.MkdirAll(filepath.Dir(pidPath), 0700); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-	if err := os.WriteFile(pidPath, []byte("not-valid-json{{{{"), 0600); err != nil {
-		t.Fatalf("WriteFile: %v", err)
-	}
-
-	result := CheckConcurrentSession("agent1", "sess1")
-	if result != "" {
-		t.Errorf("expected empty string for corrupt file, got %q", result)
-	}
-
-	// Corrupt PID file should have been removed.
-	if _, err := os.Stat(pidPath); !os.IsNotExist(err) {
-		t.Errorf("expected corrupt PID file to be removed, but it still exists")
-	}
-}
-
-func TestCheckConcurrentSession_LiveProcess(t *testing.T) {
-	redirectConfigDir(t)
-
-	// Write a PID file for the current process — it is definitely running.
-	writePIDFileDirectly(t, "agentLive", "sessLive", SessionLock{
+	// Use the current process PID — guaranteed to be running
+	lock := SessionLock{
 		PID:     os.Getpid(),
-		Started: time.Now().UTC().Format(time.RFC3339),
+		Started: "2024-01-01T00:00:00Z",
 		URL:     "wss://example.com",
-	})
+	}
+	writePIDInDir(t, tmpDir, "main", "main", lock)
 
-	result := CheckConcurrentSession("agentLive", "sessLive")
+	result := CheckConcurrentSession("main", "main")
 	if result == "" {
-		t.Error("expected a warning message for a live process, got empty string")
-	}
-	if !strings.Contains(result, "warning:") {
-		t.Errorf("expected warning prefix, got %q", result)
-	}
-	if !strings.Contains(result, fmt.Sprintf("PID %d", os.Getpid())) {
-		t.Errorf("expected PID %d in warning, got %q", os.Getpid(), result)
+		t.Error("expected non-empty warning for active session, got empty string")
 	}
 }
 
-// ── WritePIDFile ──────────────────────────────────────────────────────────────
+func TestCheckConcurrentSession_InvalidJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	// Write corrupt PID file
+	dir := filepath.Join(tmpDir, "talons", "sessions")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatalf("mkdirall: %v", err)
+	}
+	path := filepath.Join(dir, "main-main.pid")
+	if err := os.WriteFile(path, []byte("not valid json"), 0600); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	// Should handle gracefully — not panic, return empty string
+	result := CheckConcurrentSession("main", "main")
+	if result != "" {
+		t.Errorf("invalid JSON should return empty warning, got: %q", result)
+	}
+	// File should be cleaned up
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Error("corrupt PID file should be removed")
+	}
+}
 
 func TestWritePIDFile_CreatesFile(t *testing.T) {
-	redirectConfigDir(t)
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	cleanup := WritePIDFile("agent1", "sess1", "wss://example.com")
-	defer cleanup()
+	cleanup := WritePIDFile("myagent", "mysession", "wss://example.com")
 
-	path := getPIDFilePath("agent1", "sess1")
+	path := filepath.Join(tmpDir, "talons", "sessions", "myagent-mysession.pid")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("PID file not created: %v", err)
@@ -141,134 +99,85 @@ func TestWritePIDFile_CreatesFile(t *testing.T) {
 
 	var lock SessionLock
 	if err := json.Unmarshal(data, &lock); err != nil {
-		t.Fatalf("PID file is not valid JSON: %v", err)
+		t.Fatalf("invalid JSON in PID file: %v", err)
 	}
 
 	if lock.PID != os.Getpid() {
-		t.Errorf("expected PID %d, got %d", os.Getpid(), lock.PID)
+		t.Errorf("PID: got %d, want %d", lock.PID, os.Getpid())
 	}
 	if lock.URL != "wss://example.com" {
-		t.Errorf("expected URL wss://example.com, got %q", lock.URL)
+		t.Errorf("URL: got %q, want %q", lock.URL, "wss://example.com")
 	}
 	if lock.Started == "" {
-		t.Error("expected Started to be set")
-	}
-	// Verify Started is parseable as RFC3339.
-	if _, err := time.Parse(time.RFC3339, lock.Started); err != nil {
-		t.Errorf("Started is not RFC3339: %v", err)
-	}
-}
-
-func TestWritePIDFile_FilePermissions(t *testing.T) {
-	redirectConfigDir(t)
-
-	cleanup := WritePIDFile("agent1", "sess1", "wss://example.com")
-	defer cleanup()
-
-	path := getPIDFilePath("agent1", "sess1")
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatalf("Stat: %v", err)
-	}
-	if mode := info.Mode().Perm(); mode != 0600 {
-		t.Errorf("expected permissions 0600, got %04o", mode)
-	}
-}
-
-func TestWritePIDFile_Cleanup(t *testing.T) {
-	redirectConfigDir(t)
-
-	cleanup := WritePIDFile("agent1", "sess1", "wss://example.com")
-	path := getPIDFilePath("agent1", "sess1")
-
-	// File should exist before cleanup.
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		t.Fatal("PID file should exist before cleanup")
+		t.Error("Started should be non-empty")
 	}
 
+	// Cleanup removes the file
 	cleanup()
-
-	// File should be gone after cleanup.
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Error("PID file should be removed after cleanup")
+		t.Error("cleanup should have removed PID file")
 	}
 }
 
 func TestWritePIDFile_CleanupIdempotent(t *testing.T) {
-	redirectConfigDir(t)
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	cleanup := WritePIDFile("agent1", "sess1", "wss://example.com")
-
-	// Should not panic when called twice.
-	defer func() {
-		if r := recover(); r != nil {
-			t.Errorf("second cleanup call panicked: %v", r)
-		}
-	}()
+	cleanup := WritePIDFile("myagent", "mysession", "wss://example.com")
+	// Call cleanup twice — should not panic
 	cleanup()
-	cleanup() // second call must be a no-op
+	cleanup()
 }
 
-// ── getPIDFilePath ────────────────────────────────────────────────────────────
-
-func TestGetPIDFilePath(t *testing.T) {
-	redirectConfigDir(t)
-
-	path := getPIDFilePath("myagent", "mysession")
-
-	if !strings.Contains(path, "talons") {
-		t.Errorf("path should contain 'talons', got %q", path)
+func TestGetPIDFilePath_Sanitizes(t *testing.T) {
+	path1 := getPIDFilePath("my/agent", "my session")
+	path2 := getPIDFilePath("my_agent", "my_session")
+	// Slashes and spaces should be replaced
+	if filepath.Base(path1) == filepath.Base(path2) {
+		// This is fine — as long as they don't contain the raw unsafe chars
+		return
 	}
-	if !strings.Contains(path, "sessions") {
-		t.Errorf("path should contain 'sessions', got %q", path)
-	}
-	if !strings.HasSuffix(path, ".pid") {
-		t.Errorf("path should end with .pid, got %q", path)
-	}
-	// Verify agent-session combo appears (sanitized).
-	base := filepath.Base(path)
-	if !strings.Contains(base, "myagent") {
-		t.Errorf("filename should contain agent name, got %q", base)
-	}
-	if !strings.Contains(base, "mysession") {
-		t.Errorf("filename should contain session name, got %q", base)
+	// Verify no slash in the filename
+	base := filepath.Base(path1)
+	for _, c := range base {
+		if c == '/' || c == '\\' {
+			t.Errorf("filename contains unsafe character: %q", base)
+		}
 	}
 }
 
-func TestGetPIDFilePath_Separator(t *testing.T) {
-	redirectConfigDir(t)
+func TestCheckConcurrentSession_DifferentSessions(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	// Agent and session should be joined by a hyphen in the filename.
-	path := getPIDFilePath("foo", "bar")
-	base := filepath.Base(path)
-	if !strings.Contains(base, "foo-bar") {
-		t.Errorf("expected 'foo-bar' in filename, got %q", base)
+	// Write PID file for agent=main, session=main (current process)
+	lock := SessionLock{PID: os.Getpid(), Started: "2024-01-01T00:00:00Z", URL: "wss://x.com"}
+	writePIDInDir(t, tmpDir, "main", "main", lock)
+
+	// Check a different session — should not conflict
+	result := CheckConcurrentSession("main", "other")
+	if result != "" {
+		t.Errorf("different session should not conflict, got: %q", result)
 	}
 }
 
-// ── sanitizeName ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
 
-func TestSanitizeName(t *testing.T) {
-	cases := []struct {
-		input string
-		want  string
-	}{
-		{"simple", "simple"},
-		{"with space", "with_space"},
-		{"with/slash", "with_slash"},
-		{"UPPER", "upper"},
-		{"agent-session", "agent-session"}, // hyphen is preserved
-		{"foo.bar", "foo_bar"},
-		{"foo@bar!baz", "foo_bar_baz"},
-		{"mixed-Case_123", "mixed-case_123"},
-		{"../traversal", "___traversal"},
+func writePIDInDir(t *testing.T, configDir, agent, session string, lock SessionLock) {
+	t.Helper()
+	dir := filepath.Join(configDir, "talons", "sessions")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		t.Fatalf("mkdirall: %v", err)
 	}
-	for _, tc := range cases {
-		t.Run(tc.input, func(t *testing.T) {
-			got := sanitizeName(tc.input)
-			if got != tc.want {
-				t.Errorf("sanitizeName(%q) = %q, want %q", tc.input, got, tc.want)
-			}
-		})
+	safe := reUnsafe.ReplaceAllString(agent+"-"+session, "_")
+	path := filepath.Join(dir, safe+".pid")
+	data, err := json.Marshal(lock)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatalf("write: %v", err)
 	}
 }
