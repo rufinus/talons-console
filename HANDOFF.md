@@ -33,6 +33,7 @@ git commit --author="Ludwig Ruderstaller <lr@cwd.at>" -m "..."
 - ✅ TASK-003: Core interfaces — `GatewayClient`, `WebSocketConn`, `ConnectionState` (5 states), 6 sentinel errors, `OutboundMessage`, `InboundEvent`, `InboundKind` (8 kinds, KindUnknown=0).
 - ✅ TASK-016: Version info + update check — `version.String()`, `version.CheckUpdate(ctx)`, `githubReleasesURL` is a `var` (not const) for test override. 91.4% coverage.
 - ✅ TASK-012: Markdown rendering + terminal detection. `RenderMarkdown(content, width)` singleton glamour renderer (width locked at first call — MVP). `DetectTerminal()` uses golang.org/x/term for size. Removed glamour blank import from tools.go.
+- ✅ TASK-010: Config system — `Load(v *viper.Viper)`, `Validate()`, `CheckFilePermissions()`. Uses explicit `BindEnv` for all keys (AutomaticEnv alone doesn't hydrate via Unmarshal). 91.8% coverage. Removed viper blank import from tools.go.
 
 ## Key Notes
 - `tools.go` (build tag `//go:build tools`) keeps all deps alive. Remove a blank import when your package imports that dep for real.
@@ -42,3 +43,7 @@ git commit --author="Ludwig Ruderstaller <lr@cwd.at>" -m "..."
 - `InboundKind` starts at `KindUnknown = 0` — guard against zero-value events being misread as real ones.
 - `GatewayClient` is the only interface TUI should depend on — never import the concrete `Client` struct directly.
 - `ErrShutdown` message: `"client is shutting down"` (present continuous).
+- Config: `Load(v)` must be called AFTER all `v.BindPFlag(...)` cobra flag bindings. Call `CheckFilePermissions(path)` separately at CLI layer — Load doesn't call it.
+- Config env key replacer maps `.` and `-` → `_`: `timeout_ms` → `TALONS_TIMEOUT_MS`.
+- Session PID files (TASK-011): `os.UserConfigDir()/talons/sessions/<agent>-<session>.pid`
+- `RenderMarkdown` singleton: width locked at first call. Not a problem for MVP.
