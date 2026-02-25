@@ -16,8 +16,8 @@ go.work
 go.work.sum
 
 # Binary output
-talons
-talons-*
+/talons
+/talons-*
 dist/
 
 # IDE
