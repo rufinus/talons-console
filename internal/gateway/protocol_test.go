@@ -40,13 +40,13 @@ func TestParseInbound(t *testing.T) {
 		{
 			name: "hello-ok response",
 			input: mustJSON(t, InboundFrame{
-				Type:    "res",
-				ID:      "connect-1",
-				OK:      &okTrue,
+				Type: "res",
+				ID:   "connect-1",
+				OK:   &okTrue,
 				Payload: mustJSON(t, HelloOKPayload{
-					Type:    "hello-ok",
+					Type:     "hello-ok",
 					Protocol: 3,
-					Server:  HelloServerInfo{Version: "2.5.0", ConnID: "conn-1"},
+					Server:   HelloServerInfo{Version: "2.5.0", ConnID: "conn-1"},
 					Features: HelloFeatures{
 						Methods: []string{"chat.send"},
 						Events:  []string{"chat.event"},
@@ -265,8 +265,8 @@ func TestParseInbound(t *testing.T) {
 		{
 			name: "chat.event delta no message",
 			input: mustJSON(t, InboundFrame{
-				Type:  "event",
-				Event: "chat.event",
+				Type:    "event",
+				Event:   "chat.event",
 				Payload: mustJSON(t, ChatEventPayload{State: "delta"}),
 			}),
 			wantKind: KindToken,

@@ -28,13 +28,13 @@ func CheckConcurrentSession(agent, session string) string {
 
 	var lock SessionLock
 	if err := json.Unmarshal(data, &lock); err != nil {
-		os.Remove(path) // corrupt file, clean up
+		_ = os.Remove(path) // corrupt file, clean up
 		return ""
 	}
 
 	// isProcessRunning is implemented per-platform via build tags.
 	if !isProcessRunning(lock.PID) {
-		os.Remove(path) // stale PID file, clean up
+		_ = os.Remove(path) // stale PID file, clean up
 		return ""
 	}
 
@@ -62,7 +62,7 @@ func WritePIDFile(agent, session, url string) func() {
 	return func() {
 		if !cleaned {
 			cleaned = true
-			os.Remove(path)
+			_ = os.Remove(path)
 		}
 	}
 }

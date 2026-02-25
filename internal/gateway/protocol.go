@@ -46,14 +46,14 @@ type HistoryParams struct {
 
 // ConnectParams is the params block for the connect method.
 type ConnectParams struct {
-	MinProtocol int          `json:"minProtocol"`
-	MaxProtocol int          `json:"maxProtocol"`
-	Client      ClientInfo   `json:"client"`
-	Role        string       `json:"role"`
-	Scopes      []string     `json:"scopes"`
+	MinProtocol int             `json:"minProtocol"`
+	MaxProtocol int             `json:"maxProtocol"`
+	Client      ClientInfo      `json:"client"`
+	Role        string          `json:"role"`
+	Scopes      []string        `json:"scopes"`
 	Auth        AuthCredentials `json:"auth"`
-	UserAgent   string       `json:"userAgent,omitempty"`
-	Device      *DeviceInfo  `json:"device,omitempty"`
+	UserAgent   string          `json:"userAgent,omitempty"`
+	Device      *DeviceInfo     `json:"device,omitempty"`
 }
 
 // ClientInfo describes the connecting client.
@@ -107,12 +107,12 @@ type FrameError struct {
 
 // HelloOKPayload is the payload of a successful connect response.
 type HelloOKPayload struct {
-	Type     string           `json:"type"` // "hello-ok"
-	Protocol int              `json:"protocol"`
-	Server   HelloServerInfo  `json:"server"`
-	Features HelloFeatures    `json:"features"`
-	Snapshot *HelloSnapshot   `json:"snapshot,omitempty"`
-	Auth     *HelloAuth       `json:"auth,omitempty"`
+	Type     string          `json:"type"` // "hello-ok"
+	Protocol int             `json:"protocol"`
+	Server   HelloServerInfo `json:"server"`
+	Features HelloFeatures   `json:"features"`
+	Snapshot *HelloSnapshot  `json:"snapshot,omitempty"`
+	Auth     *HelloAuth      `json:"auth,omitempty"`
 }
 
 // HelloServerInfo contains server identification.
@@ -154,13 +154,13 @@ type ConnectChallengePayload struct {
 
 // ChatEventPayload is the payload of a chat.event inbound event.
 type ChatEventPayload struct {
-	RunID      string           `json:"runId"`
-	SessionKey string           `json:"sessionKey"`
-	Seq        int64            `json:"seq"`
-	State      string           `json:"state"` // "delta", "final", "aborted", "error"
-	Message    *ChatEventMsg    `json:"message,omitempty"`
-	ErrorMsg   string           `json:"errorMessage,omitempty"`
-	StopReason string           `json:"stopReason,omitempty"`
+	RunID      string        `json:"runId"`
+	SessionKey string        `json:"sessionKey"`
+	Seq        int64         `json:"seq"`
+	State      string        `json:"state"` // "delta", "final", "aborted", "error"
+	Message    *ChatEventMsg `json:"message,omitempty"`
+	ErrorMsg   string        `json:"errorMessage,omitempty"`
+	StopReason string        `json:"stopReason,omitempty"`
 }
 
 // ChatEventMsg is a partial or final message in a chat.event payload.
