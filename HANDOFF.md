@@ -30,7 +30,13 @@ git commit --author="Ludwig Ruderstaller <lr@cwd.at>" -m "..."
 
 ## Completed Tasks
 - ✅ TASK-001: Scaffolding done. All dirs, deps, Makefile in place. `go build ./...` passes.
-- ✅ TASK-003: Core interfaces — `GatewayClient`, `WebSocketConn`, `ConnectionState` (5 states), 6 sentinel errors, `OutboundMessage`, `InboundEvent`, `InboundKind` (8 kinds, KindUnknown=0).
+- ✅ TASK-003: Core interfaces — `GatewayClient`, `WebSocketConn`, `ConnectionState` (5 states), 6 sentinel errors. Types moved to protocol.go.
+- ✅ TASK-002: Linting (`.golangci.yml` v2), CI workflow (`.github/workflows/ci.yml`), Makefile updated. Also produced TASK-004 and TASK-005 work (see below).
+- ✅ TASK-004 (done by TASK-002): Full protocol types in `internal/gateway/protocol.go` — `OutboundFrame`, `ChatSendParams`, `ConnectParams`, `HelloOKPayload`, `ConnectChallengePayload`, `ChatEventPayload`, all inbound types, `ParseInbound()`. 83.1% coverage.
+- ✅ TASK-005 (done by TASK-002): `wsConn` wrapper + `MockWebSocketConn` in `internal/gateway/websocket.go`. Mock has `EnqueueRead`, `SentMessages()`, `SetWriteError`.
+- ✅ TASK-016: Version info + update check — `version.String()`, `version.CheckUpdate(ctx)`, `githubReleasesURL` is a `var` for test override. 91.4% coverage.
+- ✅ TASK-012: Markdown rendering + terminal detection. `RenderMarkdown(content, width)` singleton glamour renderer. `DetectTerminal()` uses golang.org/x/term.
+- ✅ TASK-010: Config system — `Load(v *viper.Viper)`, `Validate()`, `CheckFilePermissions()`. Uses explicit `BindEnv` (AutomaticEnv alone doesn't hydrate via Unmarshal). 91.8% coverage.
 - ✅ TASK-016: Version info + update check — `version.String()`, `version.CheckUpdate(ctx)`, `githubReleasesURL` is a `var` (not const) for test override. 91.4% coverage.
 - ✅ TASK-012: Markdown rendering + terminal detection. `RenderMarkdown(content, width)` singleton glamour renderer (width locked at first call — MVP). `DetectTerminal()` uses golang.org/x/term for size. Removed glamour blank import from tools.go.
 - ✅ TASK-010: Config system — `Load(v *viper.Viper)`, `Validate()`, `CheckFilePermissions()`. Uses explicit `BindEnv` for all keys (AutomaticEnv alone doesn't hydrate via Unmarshal). 91.8% coverage. Removed viper blank import from tools.go.
