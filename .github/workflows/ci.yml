@@ -19,13 +19,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.24"
           cache: true
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
-          version: v1.62.2
+          version: v2.10.1
           args: --timeout=5m
 
   test:
@@ -37,7 +37,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.24"
           cache: true
 
       - name: Run tests
@@ -81,7 +81,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.24"
           cache: true
 
       - name: Build ${{ matrix.suffix }}
@@ -106,7 +106,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.21"
+          go-version: "1.24"
           cache: true
 
       - name: Install govulncheck
