@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -111,12 +112,45 @@ func (m *MockGateway) ReceivedMessages() []gateway.OutboundMessage {
 	return append([]gateway.OutboundMessage{}, m.receivedMessages...)
 }
 
+// WaitForReceivedCount polls until at least n messages have been received by
+// the mock, or the timeout expires. Returns true when the count is reached.
+func (m *MockGateway) WaitForReceivedCount(n int, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		m.receivedMu.RLock()
+		count := len(m.receivedMessages)
+		m.receivedMu.RUnlock()
+		if count >= n {
+			return true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return false
+}
+
+// findClient looks up a connected client by exact id or by IP prefix (without
+// port). This lets tests pass bare IPs like "127.0.0.1" even though clients
+// are keyed by the full RemoteAddr ("127.0.0.1:PORT").
+func (m *MockGateway) findClient(clientID string) *mockClient {
+	m.clientsMu.RLock()
+	defer m.clientsMu.RUnlock()
+	if c, ok := m.clients[clientID]; ok {
+		return c
+	}
+	// Prefix match: "127.0.0.1" matches "127.0.0.1:PORT"
+	prefix := clientID + ":"
+	for id, c := range m.clients {
+		if strings.HasPrefix(id, prefix) {
+			return c
+		}
+	}
+	return nil
+}
+
 // SendToken sends a streaming token to a specific client.
 func (m *MockGateway) SendToken(clientID string, content string) error {
-	m.clientsMu.RLock()
-	client, ok := m.clients[clientID]
-	m.clientsMu.RUnlock()
-	if !ok {
+	client := m.findClient(clientID)
+	if client == nil {
 		return nil // Client not connected
 	}
 
@@ -139,10 +173,8 @@ func (m *MockGateway) SendToken(clientID string, content string) error {
 
 // SendMessageComplete sends a message completion event to a client.
 func (m *MockGateway) SendMessageComplete(clientID string) error {
-	m.clientsMu.RLock()
-	client, ok := m.clients[clientID]
-	m.clientsMu.RUnlock()
-	if !ok {
+	client := m.findClient(clientID)
+	if client == nil {
 		return nil
 	}
 

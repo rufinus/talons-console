@@ -87,7 +87,9 @@ func TestSendAndReceive(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// Verify message was received by mock
+		// Wait for the mock to receive the message (Send is async via writeLoop).
+		require.True(t, mockGW.WaitForReceivedCount(1, 2*time.Second),
+			"timed out waiting for mock to receive the sent message")
 		received := mockGW.ReceivedMessages()
 		require.Len(t, received, 1)
 

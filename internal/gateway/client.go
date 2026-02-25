@@ -155,6 +155,9 @@ func (c *Client) Messages() <-chan InboundEvent {
 
 // Close implements GatewayClient. It shuts down all goroutines and closes
 // the WebSocket connection.
+//
+// The connection is closed *before* wg.Wait so that the readLoop unblocks
+// from its blocking conn.ReadMessage() call and can exit cleanly.
 func (c *Client) Close() error {
 	select {
 	case <-c.quit:
@@ -162,15 +165,17 @@ func (c *Client) Close() error {
 	default:
 		close(c.quit)
 	}
-	c.wg.Wait()
 
+	// Close the underlying connection first so readLoop unblocks from
+	// its blocking ReadMessage() call; otherwise wg.Wait() would deadlock.
 	c.connMu.RLock()
 	conn := c.conn
 	c.connMu.RUnlock()
-
 	if conn != nil {
-		return conn.Close()
+		_ = conn.Close()
 	}
+
+	c.wg.Wait()
 	return nil
 }
 
@@ -284,9 +289,22 @@ func (c *Client) writeLoop(conn WebSocketConn) {
 }
 
 func (c *Client) writeMsg(conn WebSocketConn, msg OutboundMessage) error {
-	data, err := json.Marshal(msg)
+	// Convert the high-level OutboundMessage to a wire-format OutboundFrame.
+	// msg.Type maps to the "method" field; msg.Payload becomes "params".
+	// This mirrors sendHistoryRequest and keeps the protocol consistent.
+	paramsJSON, err := json.Marshal(msg.Payload)
 	if err != nil {
-		return fmt.Errorf("marshalling message: %w", err)
+		return fmt.Errorf("marshalling params: %w", err)
+	}
+	frame := OutboundFrame{
+		Type:   "req",
+		ID:     fmt.Sprintf("msg-%d", time.Now().UnixMilli()),
+		Method: msg.Type,
+		Params: json.RawMessage(paramsJSON),
+	}
+	data, err := json.Marshal(frame)
+	if err != nil {
+		return fmt.Errorf("marshalling frame: %w", err)
 	}
 	return conn.WriteMessage(websocket.TextMessage, data)
 }
