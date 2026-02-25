@@ -11,8 +11,8 @@ import (
 	"time"
 )
 
-// releasesURL is the GitHub Releases API endpoint. Variable so tests can override.
-var releasesURL = "https://api.github.com/repos/openclaw/talons/releases/latest"
+// githubReleasesURL is the GitHub Releases API endpoint. Variable so tests can override.
+var githubReleasesURL = "https://api.github.com/repos/openclaw/talons/releases/latest" //nolint:gochecknoglobals
 
 // UpdateInfo contains the result of an update check.
 type UpdateInfo struct {
@@ -27,7 +27,7 @@ type UpdateInfo struct {
 // or if the GitHub API returns a non-200 status.
 func CheckUpdate(ctx context.Context) (*UpdateInfo, error) {
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, releasesURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, githubReleasesURL, nil)
 	if err != nil {
 		return nil, err
 	}

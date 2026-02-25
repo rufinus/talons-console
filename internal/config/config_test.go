@@ -21,13 +21,6 @@ func writeConfig(t *testing.T, root, content string) {
 	}
 }
 
-// newViperWithConfig creates a fresh viper instance that points at cfgPath.
-func newViperWithConfig(cfgPath string) *viper.Viper {
-	v := viper.New()
-	v.SetConfigFile(cfgPath)
-	return v
-}
-
 func TestDefaultConfig(t *testing.T) {
 	cfg := DefaultConfig()
 

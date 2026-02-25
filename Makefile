@@ -9,7 +9,7 @@ LDFLAGS    := -s -w \
               -X $(MODULE)/internal/version.Commit=$(COMMIT) \
               -X $(MODULE)/internal/version.BuildDate=$(BUILD_DATE)
 
-GOPATH     ?= $(shell go env GOPATH)
+GOPATH     := $(shell go env GOPATH)
 LINT       := $(GOPATH)/bin/golangci-lint
 
 .PHONY: all build build-all lint test test-race clean install help

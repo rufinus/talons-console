@@ -36,7 +36,7 @@ func TestCheckUpdate_NewerAvailable(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(mockRelease("v2.0.0", "https://github.com/openclaw/talons/releases/tag/v2.0.0"))
+		_, _ = w.Write(mockRelease("v2.0.0", "https://github.com/openclaw/talons/releases/tag/v2.0.0"))
 	}))
 	defer ts.Close()
 
@@ -66,7 +66,7 @@ func TestCheckUpdate_UpToDate(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(mockRelease("v1.2.3", "https://github.com/openclaw/talons/releases/tag/v1.2.3"))
+		_, _ = w.Write(mockRelease("v1.2.3", "https://github.com/openclaw/talons/releases/tag/v1.2.3"))
 	}))
 	defer ts.Close()
 
@@ -124,7 +124,7 @@ func TestCheckUpdate_InvalidVersion(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(mockRelease("not-a-version", "https://example.com"))
+		_, _ = w.Write(mockRelease("not-a-version", "https://example.com"))
 	}))
 	defer ts.Close()
 
