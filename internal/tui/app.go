@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/rufinus/talons-console/internal/config"
 	"github.com/rufinus/talons-console/internal/gateway"
 )
@@ -33,26 +34,31 @@ func NewModel(client gateway.GatewayClient, cfg *config.Config) Model {
 		header:   NewHeaderModel(cfg.Agent, cfg.Session),
 		messages: NewMessagesModel(80, 24),
 		input:    NewInputModel(80, 3),
+		width:    80,
+		height:   24,
+	}
+}
+
+// ListenCmd creates a Bubble Tea command that blocks on the given event channel
+// and returns the next event (or a ConnectionStateMsg if the channel is closed).
+// This is the recommended pattern — pass the channel directly to avoid capturing
+// the model value inside a closure.
+func ListenCmd(ch <-chan gateway.InboundEvent) tea.Cmd {
+	return func() tea.Msg {
+		evt, ok := <-ch
+		if !ok {
+			return ConnectionStateMsg{State: gateway.StateDisconnected}
+		}
+		return GatewayEventMsg{Event: evt}
 	}
 }
 
 // Init implements tea.Model. Returns the initial command to start the Gateway listener.
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(
-		m.listenCmd(),
+		ListenCmd(m.client.Messages()),
 		m.messages.Init(),
 	)
-}
-
-// listenCmd creates a Bubble Tea command that listens for Gateway events.
-func (m Model) listenCmd() tea.Cmd {
-	return func() tea.Msg {
-		event, ok := <-m.client.Messages()
-		if !ok {
-			return QuitMsg{}
-		}
-		return GatewayEventMsg{Event: event}
-	}
 }
 
 // Update implements tea.Model. Routes messages to appropriate handlers.
@@ -61,16 +67,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		// Handle Ctrl-C first
+		if msg.Type == tea.KeyCtrlC {
+			m.quitting = true
+			return m, tea.Quit
+		}
+
 		// Let input handle the key first
 		inputModel, inputCmd := m.input.Update(msg)
 		m.input = inputModel.(InputModel)
 		cmds = append(cmds, inputCmd)
 
-		// Handle special keys after input processing
-		switch msg.Type {
-		case tea.KeyEnter:
-			// Send message if input has content
+		// Handle Enter: add user message immediately, then dispatch send
+		if msg.Type == tea.KeyEnter {
 			if value := m.input.Value(); value != "" {
+				m.messages.AppendUserMessage(value)
 				cmds = append(cmds, m.handleSend(value))
 				m.input.Reset()
 			}
@@ -86,13 +97,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-		// Continue listening
-		cmds = append(cmds, m.listenCmd())
+		// Re-arm the listener for the next event
+		cmds = append(cmds, ListenCmd(m.client.Messages()))
 
 	case ConnectionStateMsg:
 		m.header.SetConnectionState(msg.State)
 
 	case SendRequestMsg:
+		m.messages.AppendUserMessage(msg.Text)
 		cmds = append(cmds, m.handleSend(msg.Text))
 
 	case QuitMsg:
@@ -100,7 +112,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 
-	// Update sub-models
+	// Give sub-models a chance to handle the message too
 	msgModel, msgCmd := m.messages.Update(msg)
 	m.messages = msgModel.(MessagesModel)
 	cmds = append(cmds, msgCmd)
@@ -108,25 +120,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// handleSend sends a message to the Gateway and updates the UI.
+// handleSend sends a message to the Gateway.
 func (m *Model) handleSend(text string) tea.Cmd {
+	client := m.client
+	cfg := m.config
+
 	return func() tea.Msg {
-		// Build the chat.send params payload
 		params := gateway.ChatSendParams{
 			Content:    text,
-			SessionKey: m.config.Session,
-			AgentID:    m.config.Agent,
-			Deliver:    m.config.Deliver,
-			Thinking:   m.config.Thinking,
-			TimeoutMs:  m.config.TimeoutMs,
+			SessionKey: cfg.Session,
+			AgentID:    cfg.Agent,
+			Deliver:    cfg.Deliver,
+			Thinking:   cfg.Thinking,
+			TimeoutMs:  cfg.TimeoutMs,
 		}
 
-		msg := gateway.OutboundMessage{
+		outMsg := gateway.OutboundMessage{
 			Type:    "chat.send",
 			Payload: params,
 		}
 
-		if err := m.client.Send(msg); err != nil {
+		if err := client.Send(outMsg); err != nil {
 			return GatewayEventMsg{Event: gateway.InboundEvent{
 				Kind:  gateway.KindError,
 				Error: fmt.Sprintf("Failed to send: %v", err),
@@ -137,7 +151,7 @@ func (m *Model) handleSend(text string) tea.Cmd {
 	}
 }
 
-// handleGatewayEvent processes events from the Gateway.
+// handleGatewayEvent processes events from the Gateway and updates sub-models.
 func (m *Model) handleGatewayEvent(event gateway.InboundEvent) tea.Cmd {
 	switch event.Kind {
 	case gateway.KindToken:
@@ -149,17 +163,17 @@ func (m *Model) handleGatewayEvent(event gateway.InboundEvent) tea.Cmd {
 	case gateway.KindAuthResult:
 		if event.Success {
 			m.header.SetConnectionState(gateway.StateConnected)
+		} else {
+			m.header.SetConnectionState(gateway.StateDisconnected)
 		}
 
 	case gateway.KindError:
-		// Display error in messages
-		m.messages.AppendUserMessage(fmt.Sprintf("Error: %s", event.Error))
+		m.messages.AppendSystemMessage("Error: " + event.Error)
 
 	case gateway.KindHistory:
 		m.messages.LoadHistory(event.HistoryMessages)
 
 	case gateway.KindSessionInfo:
-		// Update header with session info
 		m.header.agent = event.Agent
 		m.header.session = event.Session
 	}
@@ -169,15 +183,13 @@ func (m *Model) handleGatewayEvent(event gateway.InboundEvent) tea.Cmd {
 
 // updateSizes adjusts all components to fit the terminal.
 func (m *Model) updateSizes() {
-	// Header: 1 line
-	// Input: 3 lines minimum
-	// Messages: remaining space
+	// Header: 1 line, Input: 3 lines, Messages: remaining space
 	headerHeight := 1
 	inputHeight := 3
-	messagesHeight := m.height - headerHeight - inputHeight - 2 // padding/borders
+	messagesHeight := m.height - headerHeight - inputHeight - 2 // borders/padding
 
 	if messagesHeight < 10 {
-		messagesHeight = 10 // minimum
+		messagesHeight = 10
 	}
 
 	m.header.SetSize(m.width)
@@ -191,16 +203,27 @@ func (m Model) View() string {
 		return ""
 	}
 
-	// Layout: Header at top, Messages in middle, Input at bottom
 	headerView := m.header.View()
 	messagesView := m.messages.View()
 	inputView := m.input.View()
 
-	// Use lipgloss to join vertically
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		headerView,
 		messagesView,
 		inputView,
 	)
+}
+
+// RecoverTerminal runs the Bubble Tea program with panic recovery,
+// restoring the terminal on crash.
+func RecoverTerminal(p *tea.Program) error {
+	defer func() {
+		if r := recover(); r != nil {
+			_ = p.RestoreTerminal()
+			fmt.Printf("talons crashed: %v\n", r)
+		}
+	}()
+	_, err := p.Run()
+	return err
 }

@@ -19,5 +19,11 @@ type SendRequestMsg struct {
 	Text string
 }
 
+// TerminalResizeMsg indicates terminal dimensions changed.
+type TerminalResizeMsg struct {
+	Width  int
+	Height int
+}
+
 // QuitMsg signals application shutdown.
 type QuitMsg struct{}

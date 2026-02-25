@@ -71,6 +71,11 @@ func (m InputModel) Reset() {
 	m.textarea.Reset()
 }
 
+// Height returns the current height of the input area.
+func (m InputModel) Height() int {
+	return m.height
+}
+
 // SetSize updates the input dimensions.
 func (m *InputModel) SetSize(width, height int) {
 	m.height = height

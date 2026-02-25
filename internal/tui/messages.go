@@ -112,6 +112,15 @@ func (m *MessagesModel) AppendUserMessage(content string) {
 	m.showSpinner = true
 }
 
+// AppendSystemMessage adds a system message (errors, status, etc).
+func (m *MessagesModel) AppendSystemMessage(content string) {
+	m.messages = append(m.messages, ChatMessage{
+		Role:      "system",
+		Content:   content,
+		Timestamp: time.Now(),
+	})
+}
+
 // AppendAssistantMessage starts a new assistant message (streaming).
 func (m *MessagesModel) AppendAssistantMessage(content string) {
 	m.messages = append(m.messages, ChatMessage{
