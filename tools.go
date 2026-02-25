@@ -7,9 +7,7 @@ package main
 import (
 	_ "github.com/charmbracelet/bubbles"
 	_ "github.com/charmbracelet/bubbletea"
-	_ "github.com/charmbracelet/glamour"
 	_ "github.com/charmbracelet/lipgloss"
 	_ "github.com/gorilla/websocket"
-	_ "github.com/spf13/viper"
 	_ "go.uber.org/zap"
 )
