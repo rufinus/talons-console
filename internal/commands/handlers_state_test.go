@@ -328,3 +328,23 @@ func TestHandleTimeout_EmptyString(t *testing.T) {
 		t.Error("SetTimeoutMs must not be called for empty string")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// CmdError / CmdErrorWithUsage helpers
+// ---------------------------------------------------------------------------
+
+func TestCmdError(t *testing.T) {
+	got := CmdError("model", "some error")
+	want := "⚠ /model: some error"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestCmdErrorWithUsage(t *testing.T) {
+	got := CmdErrorWithUsage("timeout", "too small", "/timeout <1000-600000>")
+	want := "⚠ /timeout: too small\nUsage: /timeout <1000-600000>"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}

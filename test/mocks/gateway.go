@@ -33,6 +33,7 @@ type MockGateway struct {
 	// Received messages
 	receivedMu       sync.RWMutex
 	receivedMessages []gateway.OutboundMessage
+	receivedFrames   []gateway.OutboundFrame
 }
 
 type mockClient struct {

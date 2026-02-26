@@ -66,6 +66,32 @@ talons --url ws://gateway.local:8080 --password <your-password>
 talons --session main --agent main
 ```
 
+### Quick Start
+
+Once connected, start typing to chat. On first launch you'll see a hint:
+> Type `/help` for available commands
+
+Slash commands are case-insensitive and support **tab autocomplete** for command names.
+
+## Slash Commands
+
+All slash commands begin with `/`. They are **case-insensitive** and support **tab autocomplete** — press `Tab` after typing `/` to cycle through available commands.
+
+| Command | Description | Example |
+|---|---|---|
+| `/help [command]` | Show available commands; pass a name for detailed help | `/help`, `/help agent` |
+| `/agent <name>` | Switch the active agent | `/agent daedalus` |
+| `/session [key]` | Switch or display the current session key | `/session my-project` |
+| `/model [name]` | Set or clear the LLM model override | `/model anthropic/claude-opus-4-6` |
+| `/thinking <level>` | Set reasoning depth: `off`, `minimal`, `low`, `medium`, `high` | `/thinking high` |
+| `/timeout [ms]` | Set or display the request timeout in milliseconds | `/timeout 120000` |
+| `/status` | Display connection and session status | `/status` |
+| `/clear` | Clear the message display (does not delete server history) | `/clear` |
+| `/reconnect` | Reconnect to the gateway | `/reconnect` |
+| `/exit` | Exit the application (`/quit` is an alias) | `/exit`, `/quit` |
+
+> **Coming in v0.3:** `/history` — browse and fetch session history from the gateway (name is reserved).
+
 ## Configuration
 
 talons looks for configuration in:

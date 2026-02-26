@@ -25,9 +25,9 @@ func InitCommands() {
 	DefaultRegistry.Register(&CommandDef{
 		Name:        "exit",
 		Aliases:     []string{"quit"},
-		Category:    "Session Control",
+		Category:    "System",
 		Description: "Exit the application",
-		LongDesc:    "Close the gateway connection and exit talons-console.",
+		LongDesc:    "Close the gateway connection and exit talons-console. Use /quit as an alias.",
 		Usage:       "/exit",
 		Examples:    []string{"/exit", "/quit"},
 		Related:     []string{"reconnect"},
@@ -55,7 +55,7 @@ func InitCommands() {
 			"The new agent name is sent to the gateway and the header is updated.",
 		Usage:    "/agent <name>",
 		Examples: []string{"/agent daedalus", "/agent metis"},
-		Related:  []string{"session", "model"},
+		Related:  []string{"session", "status"},
 		Handler:  nil,
 	})
 
@@ -78,9 +78,9 @@ func InitCommands() {
 		Category:    "Session Control",
 		Description: "Set the LLM model override",
 		LongDesc: "Override the language model used by the gateway for this session. " +
-			"Pass an empty string to clear the override and use the server default.",
+			"Pass no argument to clear the override and use the server default.",
 		Usage:    "/model [name]",
-		Examples: []string{"/model gpt-4o", "/model claude-opus-4-5", "/model"},
+		Examples: []string{"/model anthropic/claude-opus-4-6", "/model gpt-4o", "/model"},
 		Related:  []string{"thinking", "agent"},
 		Handler:  nil,
 	})
@@ -91,10 +91,10 @@ func InitCommands() {
 		Category:    "Session Control",
 		Description: "Set the reasoning/thinking level",
 		LongDesc: "Control the reasoning depth for models that support extended thinking. " +
-			"Valid levels depend on the gateway configuration.",
-		Usage:    "/thinking [level]",
-		Examples: []string{"/thinking low", "/thinking high", "/thinking"},
-		Related:  []string{"model"},
+			"Pass no argument to display the current level.",
+		Usage:    "/thinking <off|minimal|low|medium|high>",
+		Examples: []string{"/thinking low", "/thinking high", "/thinking off", "/thinking"},
+		Related:  []string{"model", "timeout"},
 		Handler:  nil,
 	})
 
@@ -114,7 +114,7 @@ func InitCommands() {
 	DefaultRegistry.Register(&CommandDef{
 		Name:        "status",
 		Aliases:     nil,
-		Category:    "System",
+		Category:    "Display",
 		Description: "Display connection and session status",
 		LongDesc:    "Show a summary of the current connection state, session parameters, message counters, and uptime.",
 		Usage:       "/status",
@@ -126,7 +126,7 @@ func InitCommands() {
 	DefaultRegistry.Register(&CommandDef{
 		Name:        "reconnect",
 		Aliases:     nil,
-		Category:    "Session Control",
+		Category:    "System",
 		Description: "Reconnect to the gateway",
 		LongDesc:    "Close the current WebSocket connection and establish a new one using the existing configuration.",
 		Usage:       "/reconnect",
@@ -139,7 +139,7 @@ func InitCommands() {
 		Name:        "history",
 		Aliases:     nil,
 		Category:    "Display",
-		Description: "Fetch session history from the gateway (available in v0.3)",
+		Description: "Browse message history (coming in v0.3)",
 		LongDesc: "Retrieve and display historical messages for the current session from the gateway. " +
 			"This feature is planned for v0.3 and is not yet active.",
 		Usage:    "/history [session-key]",

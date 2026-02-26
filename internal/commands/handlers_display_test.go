@@ -268,3 +268,52 @@ func TestWireDisplayHandlers(t *testing.T) {
 		t.Error("quit alias handler is nil")
 	}
 }
+
+// --- handleStatus narrow width ---
+
+func TestHandleStatus_NarrowWidth(t *testing.T) {
+	InitCommands()
+	ctx := newDisplayMock()
+	ctx.width = 60 // < 80, exercises the w-2 branch
+	handleStatus(ctx, nil)
+	if len(ctx.messages) == 0 {
+		t.Fatal("expected status output")
+	}
+	out := ctx.messages[0]
+	if !strings.Contains(out, "daedalus") {
+		t.Errorf("status missing agent name: %s", out)
+	}
+}
+
+func TestHandleStatus_VeryNarrowWidth(t *testing.T) {
+	InitCommands()
+	ctx := newDisplayMock()
+	ctx.width = 10                            // <= 20, uses default 60
+	ctx.gatewayURL = strings.Repeat("x", 100) // forces value truncation
+	handleStatus(ctx, nil)
+	if len(ctx.messages) == 0 {
+		t.Fatal("expected status output")
+	}
+	// Just verify it doesn't panic and returns something.
+}
+
+// --- WireReconnectHandler with missing command ---
+
+func TestWireReconnectHandler_MissingCommand(t *testing.T) {
+	r := NewCommandRegistry()
+	// "reconnect" is not registered — should return without panic
+	WireReconnectHandler(r)
+}
+
+func TestWireReconnectHandler_WithRegistry(t *testing.T) {
+	InitCommands()
+	r := DefaultRegistry
+	WireReconnectHandler(r)
+	def, ok := r.Get("reconnect")
+	if !ok {
+		t.Fatal("reconnect command not found")
+	}
+	if def.Handler == nil {
+		t.Error("expected handler to be wired")
+	}
+}
