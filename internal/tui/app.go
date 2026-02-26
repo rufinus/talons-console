@@ -331,7 +331,7 @@ func (m *Model) handleSend(content string) tea.Cmd {
 	client := m.client
 
 	params := gateway.ChatSendParams{
-		Content:        content,
+		Message:        content,
 		IdempotencyKey: uuid.NewString(),
 	}
 	m.state.ApplyToSendParams(&params)

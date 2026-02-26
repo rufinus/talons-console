@@ -116,9 +116,10 @@ func (c *Client) Connect(ctx context.Context) error {
 	c.emitEvent(result)
 	c.startLoops(conn)
 
-	// Request history after connect
+	// Request history after connect using full session key format.
 	if c.cfg.HistoryLimit > 0 {
-		_ = c.sendHistoryRequest(c.cfg.Session, conn)
+		sessionKey := fmt.Sprintf("agent:%s:%s", c.cfg.Agent, c.cfg.Session)
+		_ = c.sendHistoryRequest(sessionKey, conn)
 	}
 
 	return nil
@@ -228,6 +229,7 @@ func (c *Client) defaultDial(ctx context.Context, url string) (WebSocketConn, er
 	dialer := &websocket.Dialer{HandshakeTimeout: 15 * time.Second}
 	header := http.Header{
 		"User-Agent": []string{fmt.Sprintf("talons/%s", c.cfg.ClientVersion)},
+		"Origin":     []string{wsURLToHTTP(url)},
 	}
 	conn, _, err := dialer.DialContext(ctx, url, header)
 	if err != nil {
@@ -428,5 +430,18 @@ func (c *Client) emitEvent(evt InboundEvent) {
 	select {
 	case c.inbound <- evt:
 	case <-c.quit:
+	}
+}
+
+// wsURLToHTTP converts a ws:// or wss:// URL to http:// or https:// for the
+// Origin header. The gateway uses this to verify the connection is local.
+func wsURLToHTTP(wsURL string) string {
+	switch {
+	case len(wsURL) > 6 && wsURL[:6] == "wss://":
+		return "https://" + wsURL[6:]
+	case len(wsURL) > 5 && wsURL[:5] == "ws://":
+		return "http://" + wsURL[5:]
+	default:
+		return wsURL
 	}
 }

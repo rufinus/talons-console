@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"encoding/json"
 	"sync"
 	"testing"
 	"time"
@@ -117,18 +116,13 @@ func TestApplyToSendParams(t *testing.T) {
 	s := NewSessionState(testConfig())
 	s.SetModel("gpt-4o")
 
-	params := &gateway.ChatSendParams{Content: "hello"}
+	params := &gateway.ChatSendParams{Message: "hello"}
 	s.ApplyToSendParams(params)
 
-	if params.AgentID != "test-agent" {
-		t.Errorf("AgentID: got %q, want %q", params.AgentID, "test-agent")
+	if params.SessionKey != "agent:test-agent:test-session" {
+		t.Errorf("AgentID: got %q, want %q", params.SessionKey, "agent:test-agent:test-session")
 	}
-	if params.SessionKey != "test-session" {
-		t.Errorf("SessionKey: got %q", params.SessionKey)
-	}
-	if params.Model != "gpt-4o" {
-		t.Errorf("Model: got %q", params.Model)
-	}
+	// SessionKey already checked above
 	if params.Thinking != "low" {
 		t.Errorf("Thinking: got %q", params.Thinking)
 	}
@@ -137,45 +131,7 @@ func TestApplyToSendParams(t *testing.T) {
 	}
 }
 
-func TestApplyToSendParams_EmptyModel(t *testing.T) {
-	s := NewSessionState(testConfig())
-	// Model is empty by default
 
-	params := &gateway.ChatSendParams{Content: "hello"}
-	s.ApplyToSendParams(params)
-
-	if params.Model != "" {
-		t.Errorf("expected empty model, got %q", params.Model)
-	}
-
-	// Verify omitempty in JSON
-	data, err := json.Marshal(params)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
-	var m map[string]any
-	if err := json.Unmarshal(data, &m); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if _, ok := m["model"]; ok {
-		t.Errorf("expected 'model' key to be absent in JSON when empty, got: %s", data)
-	}
-}
-
-func TestChatSendParams_ModelJSON(t *testing.T) {
-	params := &gateway.ChatSendParams{Content: "hello", Model: "gpt-4o"}
-	data, err := json.Marshal(params)
-	if err != nil {
-		t.Fatalf("marshal: %v", err)
-	}
-	var m map[string]any
-	if err := json.Unmarshal(data, &m); err != nil {
-		t.Fatalf("unmarshal: %v", err)
-	}
-	if v, ok := m["model"]; !ok || v != "gpt-4o" {
-		t.Errorf("expected model=gpt-4o in JSON, got: %s", data)
-	}
-}
 
 func TestApplyToSendParams_RaceSafety(t *testing.T) {
 	s := NewSessionState(testConfig())
@@ -183,14 +139,14 @@ func TestApplyToSendParams_RaceSafety(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	// Goroutine 1: repeatedly set model
+	// Goroutine 1: repeatedly set thinking
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 1000; i++ {
 			if i%2 == 0 {
-				s.SetModel("gpt-4o")
+				s.SetThinking("high")
 			} else {
-				s.SetModel("")
+				s.SetThinking("off")
 			}
 		}
 	}()

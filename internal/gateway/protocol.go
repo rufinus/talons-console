@@ -28,15 +28,15 @@ type OutboundMessage struct {
 }
 
 // ChatSendParams is the params block for the chat.send method.
+// Field names match the Gateway's ChatSendParamsSchema exactly.
+// additionalProperties: false — no extra fields allowed.
 type ChatSendParams struct {
-	Content        string `json:"content"`
-	SessionKey     string `json:"sessionKey,omitempty"`
-	AgentID        string `json:"agentId,omitempty"`
-	Deliver        bool   `json:"deliver,omitempty"`
+	SessionKey     string `json:"sessionKey"`
+	Message        string `json:"message"`
 	Thinking       string `json:"thinking,omitempty"`
+	Deliver        bool   `json:"deliver,omitempty"`
 	TimeoutMs      int    `json:"timeoutMs,omitempty"`
-	IdempotencyKey string `json:"idempotencyKey,omitempty"`
-	Model          string `json:"model,omitempty"`
+	IdempotencyKey string `json:"idempotencyKey"`
 }
 
 // HistoryParams is the params block for the chat.history method.

@@ -101,7 +101,7 @@ func sendConnectRequest(conn WebSocketConn, auth AuthConfig) error {
 		MinProtocol: 3,
 		MaxProtocol: 3,
 		Client: ClientInfo{
-			ID:       "cli",
+			ID:       "openclaw-control-ui",
 			Version:  version.Version,
 			Platform: "cli",
 			Mode:     "cli",

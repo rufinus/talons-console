@@ -233,10 +233,10 @@ func runNonInteractive(message string) error {
 	if err := client.Send(gateway.OutboundMessage{
 		Type: "chat.send",
 		Payload: gateway.ChatSendParams{
-			Content:    message,
-			SessionKey: cfg.Session,
-			AgentID:    cfg.Agent,
-			Thinking:   cfg.Thinking,
+			Message:        message,
+			SessionKey:     fmt.Sprintf("agent:%s:%s", cfg.Agent, cfg.Session),
+			Thinking:       cfg.Thinking,
+			IdempotencyKey: "cli-" + cfg.Session,
 		},
 	}); err != nil {
 		return fmt.Errorf("send: %w", err)

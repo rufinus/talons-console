@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -199,20 +200,18 @@ func (s *SessionState) ResetCounters() {
 // Protocol bridge
 // ─────────────────────────────────────────────
 
-// ApplyToSendParams stamps the current agent, session, model, thinking, and
-// timeoutMs onto params under a single read lock (atomic snapshot).
+// ApplyToSendParams stamps the current session key, thinking, and timeoutMs
+// onto params under a single read lock. The session key is formatted as
+// "agent:{agent}:{session}" which is the full key format the Gateway expects.
 func (s *SessionState) ApplyToSendParams(params *gateway.ChatSendParams) {
 	s.mu.RLock()
 	agent := s.Agent
 	session := s.Session
-	model := s.Model
 	thinking := s.Thinking
 	timeoutMs := s.TimeoutMs
 	s.mu.RUnlock()
 
-	params.AgentID = agent
-	params.SessionKey = session
-	params.Model = model
+	params.SessionKey = fmt.Sprintf("agent:%s:%s", agent, session)
 	params.Thinking = thinking
 	params.TimeoutMs = timeoutMs
 }
