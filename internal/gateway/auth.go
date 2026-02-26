@@ -107,7 +107,7 @@ func sendConnectRequest(conn WebSocketConn, auth AuthConfig) error {
 			Mode:     "cli",
 		},
 		Role:      "operator",
-		Scopes:    []string{"operator.read", "operator.write"},
+		Scopes:    []string{"operator.admin", "operator.read", "operator.write", "operator.approvals", "operator.pairing"},
 		Auth:      AuthCredentials(auth),
 		UserAgent: fmt.Sprintf("talons/%s", version.Version),
 	}
