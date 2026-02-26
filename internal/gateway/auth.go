@@ -104,7 +104,7 @@ func sendConnectRequest(conn WebSocketConn, auth AuthConfig) error {
 			ID:       "cli",
 			Version:  version.Version,
 			Platform: "cli",
-			Mode:     "interactive",
+			Mode:     "session",
 		},
 		Role:      "operator",
 		Scopes:    []string{"operator.read", "operator.write"},
