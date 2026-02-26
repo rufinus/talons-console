@@ -46,13 +46,13 @@ func newTestClient(t *testing.T, gatewayURL, token, agent, session string) *gate
 	t.Helper()
 
 	cfg := gateway.ClientConfig{
-		URL:          gatewayURL,
-		Token:        token,
-		Agent:        agent,
-		Session:      session,
-		ClientID:     "talons-integration-test",
+		URL:           gatewayURL,
+		Token:         token,
+		Agent:         agent,
+		Session:       session,
+		ClientID:      "talons-integration-test",
 		ClientVersion: "0.0.0-test",
-		Platform:     "linux",
+		Platform:      "linux",
 	}
 
 	client := gateway.NewClient(cfg)
