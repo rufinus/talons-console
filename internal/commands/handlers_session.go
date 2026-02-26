@@ -111,15 +111,21 @@ func HandleSession(ctx HandlerContext, args []string) tea.Cmd {
 	// Return async cmd to load history for the new session.
 	return func() tea.Msg {
 		if err := ctx.RequestHistory(key); err != nil {
-			return systemErrorMsg{Err: fmt.Errorf("history request failed: %w", err)}
+			return SystemErrorMsg{Err: fmt.Errorf("history request failed: %w", err)}
 		}
 		return nil
 	}
 }
 
-// systemErrorMsg is a local stand-in for tui.SystemErrorMsg (defined in
-// internal/tui/events.go by TASK-009). The TUI integration (TASK-010) will
-// wire the real type; this local type is used only within this package's tests.
-type systemErrorMsg struct {
-	Err error
+// WireSessionHandlers assigns the session/agent handlers to the given registry.
+func WireSessionHandlers(r *CommandRegistry) {
+	names := map[string]HandlerFunc{
+		"agent":   HandleAgent,
+		"session": HandleSession,
+	}
+	for name, fn := range names {
+		if def, ok := r.Get(name); ok {
+			def.Handler = fn
+		}
+	}
 }

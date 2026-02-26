@@ -327,15 +327,15 @@ func TestHandleSend_ReturnsErrorEvent_OnSendFailure(t *testing.T) {
 	cmd := m.handleSend("fail message")
 	result := cmd()
 
-	evtMsg, ok := result.(GatewayEventMsg)
+	errMsg, ok := result.(SystemErrorMsg)
 	if !ok {
-		t.Fatalf("expected GatewayEventMsg on send error, got %T", result)
+		t.Fatalf("expected SystemErrorMsg on send error, got %T", result)
 	}
-	if evtMsg.Event.Kind != gateway.KindError {
-		t.Errorf("expected KindError, got %v", evtMsg.Event.Kind)
+	if errMsg.Err == nil {
+		t.Fatal("expected non-nil error in SystemErrorMsg")
 	}
-	if !strings.Contains(evtMsg.Event.Error, "gateway unavailable") {
-		t.Errorf("expected error message to contain 'gateway unavailable', got %q", evtMsg.Event.Error)
+	if !strings.Contains(errMsg.Err.Error(), "gateway unavailable") {
+		t.Errorf("expected error message to contain 'gateway unavailable', got %q", errMsg.Err.Error())
 	}
 }
 

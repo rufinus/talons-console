@@ -5,8 +5,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	"github.com/rufinus/talons-console/internal/tui"
 )
 
 // reconnectMockCtx is a minimal HandlerContext for /reconnect tests.
@@ -72,7 +70,7 @@ func TestHandleReconnect_Success(t *testing.T) {
 	}
 
 	msg := cmd()
-	reconMsg, ok := msg.(tui.ReconnectedMsg)
+	reconMsg, ok := msg.(ReconnectedMsg)
 	if !ok {
 		t.Fatalf("expected ReconnectedMsg, got %T", msg)
 	}
@@ -92,7 +90,7 @@ func TestHandleReconnect_Failure(t *testing.T) {
 	cmd := handleReconnect(mock, nil)
 
 	msg := cmd()
-	errMsg, ok := msg.(tui.SystemErrorMsg)
+	errMsg, ok := msg.(SystemErrorMsg)
 	if !ok {
 		t.Fatalf("expected SystemErrorMsg, got %T", msg)
 	}

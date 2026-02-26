@@ -24,12 +24,13 @@ type ChatMessage struct {
 
 // MessagesModel manages the chat viewport.
 type MessagesModel struct {
-	viewport    viewport.Model
-	messages    []ChatMessage
-	spinner     spinner.Model
-	showSpinner bool
-	width       int
-	height      int
+	viewport        viewport.Model
+	messages        []ChatMessage
+	spinner         spinner.Model
+	showSpinner     bool
+	currentStreamID string
+	width           int
+	height          int
 }
 
 // NewMessagesModel creates a new MessagesModel.
@@ -188,6 +189,16 @@ func (m *MessagesModel) LoadHistory(events []gateway.HistoryMessage) {
 // Messages returns the current messages.
 func (m MessagesModel) Messages() []ChatMessage {
 	return m.messages
+}
+
+// ClearMessages resets the message list, clears viewport content, and resets
+// streaming state. The backing slice is reused to avoid allocation.
+func (m *MessagesModel) ClearMessages() {
+	m.messages = m.messages[:0]
+	m.viewport.SetContent("")
+	m.viewport.GotoTop()
+	m.showSpinner = false
+	m.currentStreamID = ""
 }
 
 // renderMessage styles a single chat message.

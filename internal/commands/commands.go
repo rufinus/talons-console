@@ -149,4 +149,7 @@ func InitCommands() {
 	})
 
 	WireDisplayHandlers(DefaultRegistry)
+	WireStateHandlers(DefaultRegistry)
+	WireSessionHandlers(DefaultRegistry)
+	WireReconnectHandler(DefaultRegistry)
 }

@@ -120,3 +120,17 @@ func HandleTimeout(ctx HandlerContext, args []string) tea.Cmd {
 	ctx.AppendSystemMessage(fmt.Sprintf("Timeout set to %dms", ms))
 	return nil
 }
+
+// WireStateHandlers assigns the model/thinking/timeout handlers to the given registry.
+func WireStateHandlers(r *CommandRegistry) {
+	names := map[string]HandlerFunc{
+		"model":    HandleModel,
+		"thinking": HandleThinking,
+		"timeout":  HandleTimeout,
+	}
+	for name, fn := range names {
+		if def, ok := r.Get(name); ok {
+			def.Handler = fn
+		}
+	}
+}

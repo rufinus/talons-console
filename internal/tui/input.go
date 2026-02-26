@@ -106,3 +106,9 @@ func (m InputModel) Focused() bool {
 func (m *InputModel) SetPlaceholder(p string) {
 	m.textarea.Placeholder = p
 }
+
+// SetValue sets the input value and moves the cursor to the end.
+func (m *InputModel) SetValue(v string) {
+	m.textarea.SetValue(v)
+	m.textarea.CursorEnd()
+}

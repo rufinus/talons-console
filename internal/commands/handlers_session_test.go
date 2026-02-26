@@ -324,12 +324,12 @@ func TestHandleSession_RequestHistoryError(t *testing.T) {
 		t.Fatal("expected non-nil cmd")
 	}
 	msg := cmd()
-	errMsg, ok := msg.(systemErrorMsg)
+	errMsg, ok := msg.(SystemErrorMsg)
 	if !ok {
-		t.Fatalf("expected systemErrorMsg, got %T: %v", msg, msg)
+		t.Fatalf("expected SystemErrorMsg, got %T: %v", msg, msg)
 	}
 	if errMsg.Err == nil {
-		t.Fatal("expected non-nil error in systemErrorMsg")
+		t.Fatal("expected non-nil error in SystemErrorMsg")
 	}
 	if !strings.Contains(errMsg.Err.Error(), "history request failed") {
 		t.Errorf("expected wrapped error message, got: %v", errMsg.Err)

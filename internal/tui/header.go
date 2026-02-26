@@ -34,6 +34,16 @@ func (m *HeaderModel) SetConnectionState(state gateway.ConnectionState) {
 	m.connectionState = state
 }
 
+// SetAgent updates the agent field displayed in the header.
+func (m *HeaderModel) SetAgent(name string) {
+	m.agent = name
+}
+
+// SetSession updates the session field displayed in the header.
+func (m *HeaderModel) SetSession(key string) {
+	m.session = key
+}
+
 // SetSize updates the header width.
 func (m *HeaderModel) SetSize(width int) {
 	m.width = width

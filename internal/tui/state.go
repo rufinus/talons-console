@@ -234,3 +234,23 @@ func (s *SessionState) Snapshot() StateSnapshot {
 		MsgRecv:     s.MsgRecv,
 	}
 }
+
+// Uptime returns the duration since ConnectedAt.
+// Returns 0 if ConnectedAt is zero (not yet connected).
+func (s *SessionState) Uptime() time.Duration {
+	s.mu.RLock()
+	at := s.ConnectedAt
+	s.mu.RUnlock()
+	if at.IsZero() {
+		return 0
+	}
+	return time.Since(at)
+}
+
+// SetConnected sets GatewayURL and ConnectedAt under a single write lock.
+func (s *SessionState) SetConnected(url string, at time.Time) {
+	s.mu.Lock()
+	s.GatewayURL = url
+	s.ConnectedAt = at
+	s.mu.Unlock()
+}
