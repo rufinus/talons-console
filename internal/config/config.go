@@ -3,8 +3,10 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -131,20 +133,84 @@ func (c *Config) Validate() []string {
 // ValidateGateway validates Gateway connection fields (URL and authentication).
 // Returns a descriptive error if any required gateway field is missing or invalid.
 func (c *Config) ValidateGateway() error {
-	// URL checks
+	// 1. Presence check
 	if c.URL == "" {
-		return fmt.Errorf("gateway URL is required: set url in config or use --url flag")
-	}
-	if !strings.HasPrefix(c.URL, "ws://") && !strings.HasPrefix(c.URL, "wss://") {
-		return fmt.Errorf("gateway URL must use ws:// or wss:// scheme, got: %s", c.URL)
+		return errors.New("gateway URL is required")
 	}
 
-	// Authentication check
+	// 2. Parse the URL
+	u, parseErr := url.Parse(c.URL)
+	if parseErr != nil {
+		var urlErr *url.Error
+		if errors.As(parseErr, &urlErr) && strings.Contains(urlErr.Error(), "invalid port") {
+			port := rawPort(c.URL)
+			return fmt.Errorf("invalid port in gateway URL: %q is not a number", port)
+		}
+		return fmt.Errorf("invalid gateway URL: %s \u2014 %s", c.URL, parseErr)
+	}
+
+	// 3. Scheme check
+	if u.Scheme != "ws" && u.Scheme != "wss" {
+		return fmt.Errorf("invalid URL scheme %q. Use ws:// or wss://", u.Scheme)
+	}
+
+	// 4. Hostname check
+	if u.Hostname() == "" {
+		return errors.New("gateway URL must include a hostname (e.g., wss://gateway.example.com)")
+	}
+
+	// 5. Port range check (port is optional; only validate when present)
+	if portStr := u.Port(); portStr != "" {
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return fmt.Errorf("invalid port in gateway URL: %q is not a number", portStr)
+		}
+		if port < 1 || port > 65535 {
+			return fmt.Errorf("invalid port in gateway URL: %d is out of range (1-65535)", port)
+		}
+	}
+
+	// 6. Authentication check
 	if c.Token == "" && c.Password == "" {
-		return fmt.Errorf("gateway authentication required: provide --token or --password (or set in config file)")
+		return errors.New("gateway authentication required: provide --token or --password (or set in config file)")
 	}
 
 	return nil
+}
+
+// rawPort attempts to extract the port string from a raw URL string for
+// use in error messages when net/url.Parse itself rejects the port.
+func rawPort(rawURL string) string {
+	// Find the authority (host[:port]) portion after "://"
+	s := rawURL
+	if i := strings.Index(s, "://"); i >= 0 {
+		s = s[i+3:]
+	}
+	// Strip path/query/fragment
+	for _, sep := range []string{"/", "?", "#"} {
+		if i := strings.Index(s, sep); i >= 0 {
+			s = s[:i]
+		}
+	}
+	// Strip userinfo
+	if i := strings.LastIndex(s, "@"); i >= 0 {
+		s = s[i+1:]
+	}
+	// Handle IPv6 literal
+	if strings.HasPrefix(s, "[") {
+		if i := strings.Index(s, "]"); i >= 0 {
+			s = s[i+1:]
+			if strings.HasPrefix(s, ":") {
+				return s[1:]
+			}
+		}
+		return ""
+	}
+	// Regular host:port
+	if i := strings.LastIndex(s, ":"); i >= 0 {
+		return s[i+1:]
+	}
+	return ""
 }
 
 // CheckFilePermissions returns warnings for unsafe config file permissions.

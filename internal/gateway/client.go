@@ -184,6 +184,41 @@ func (c *Client) State() ConnectionState {
 	return ConnectionState(c.state.Load())
 }
 
+// RequestHistory is the public version of sendHistoryRequest.
+// It sends a chat.history request for the given session key using the current
+// active connection.
+func (c *Client) RequestHistory(sessionKey string) error {
+	c.connMu.RLock()
+	conn := c.conn
+	c.connMu.RUnlock()
+	if conn == nil {
+		return ErrShutdown
+	}
+	return c.sendHistoryRequest(sessionKey, conn)
+}
+
+// Reconnect performs a single close + 100ms sleep + reconnect attempt.
+// The caller is responsible for enforcing an overall timeout via ctx.
+// This method does NOT implement retry/backoff — that is the automatic
+// reconnect loop's responsibility.
+func (c *Client) Reconnect(ctx context.Context) error {
+	if err := c.Close(); err != nil {
+		return fmt.Errorf("close before reconnect: %w", err)
+	}
+	// Re-initialise the quit channel and inbound/outbound channels so the
+	// client can be used again after Close().
+	c.quit = make(chan struct{})
+	c.outbound = make(chan OutboundMessage, 64)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	return c.Connect(ctx)
+}
+
 // ─────────────────────────────────────────────
 // Internal — dial
 // ─────────────────────────────────────────────

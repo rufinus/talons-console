@@ -381,6 +381,54 @@ func TestLoad_FromEnv(t *testing.T) {
 	}
 }
 
+func TestValidateGateway_URLValidation(t *testing.T) {
+	type wantKind int
+	const (
+		wantValid wantKind = iota
+		wantErrContains
+	)
+	tests := []struct {
+		name    string
+		url     string
+		kind    wantKind
+		errSubs string
+	}{
+		{name: "empty URL", url: "", kind: wantErrContains, errSubs: "gateway URL is required"},
+		{name: "ws localhost", url: "ws://localhost:8080", kind: wantValid},
+		{name: "wss no port", url: "wss://gw.example.com", kind: wantValid},
+		{name: "wss with port", url: "wss://gw.example.com:443", kind: wantValid},
+		{name: "http rejected", url: "http://example.com", kind: wantErrContains, errSubs: "scheme"},
+		{name: "https rejected", url: "https://example.com", kind: wantErrContains, errSubs: "scheme"},
+		{name: "ws no host", url: "ws://", kind: wantErrContains, errSubs: "hostname"},
+		{name: "wss port no host", url: "wss://:8080", kind: wantErrContains, errSubs: "hostname"},
+		{name: "non-numeric port", url: "wss://host:abc", kind: wantErrContains, errSubs: "not a number"},
+		{name: "port 99999 out of range", url: "wss://host:99999", kind: wantErrContains, errSubs: "out of range"},
+		{name: "port 0 out of range", url: "wss://host:0", kind: wantErrContains, errSubs: "out of range"},
+		{name: "port 65535 valid boundary", url: "wss://host:65535", kind: wantValid},
+		{name: "port 1 valid boundary", url: "wss://host:1", kind: wantValid},
+		{name: "broken URL", url: "://broken", kind: wantErrContains, errSubs: "invalid gateway URL"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &Config{URL: tt.url, Token: "tok"}
+			err := cfg.ValidateGateway()
+			if tt.kind == wantValid {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tt.errSubs)
+			}
+			if !containsSubstr(err.Error(), tt.errSubs) {
+				t.Errorf("expected error to contain %q, got: %v", tt.errSubs, err)
+			}
+		})
+	}
+}
+
 func TestLoad_EnvOverridesFile(t *testing.T) {
 	content := `url: ws://file-host:3000
 token: file-token

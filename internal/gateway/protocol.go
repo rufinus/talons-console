@@ -36,6 +36,7 @@ type ChatSendParams struct {
 	Thinking       string `json:"thinking,omitempty"`
 	TimeoutMs      int    `json:"timeoutMs,omitempty"`
 	IdempotencyKey string `json:"idempotencyKey,omitempty"`
+	Model          string `json:"model,omitempty"`
 }
 
 // HistoryParams is the params block for the chat.history method.
