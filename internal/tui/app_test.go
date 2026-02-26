@@ -37,8 +37,8 @@ func (c *mockClient) Send(msg gateway.OutboundMessage) error {
 	c.sent = append(c.sent, msg)
 	return c.sendErr
 }
-func (c *mockClient) RequestHistory(_ string) error         { return nil }
-func (c *mockClient) Reconnect(_ context.Context) error     { return nil }
+func (c *mockClient) RequestHistory(_ string) error     { return nil }
+func (c *mockClient) Reconnect(_ context.Context) error { return nil }
 
 // ─────────────────────────────────────────────
 // Helpers
