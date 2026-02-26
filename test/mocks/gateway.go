@@ -53,6 +53,7 @@ func NewMockGateway() *MockGateway {
 		features:         []string{"chat.send", "chat.history", "streaming"},
 		version:          "2.5.0-mock",
 		receivedMessages: make([]gateway.OutboundMessage, 0),
+		receivedFrames:   make([]gateway.OutboundFrame, 0),
 	}
 }
 
