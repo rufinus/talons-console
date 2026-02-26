@@ -1,0 +1,53 @@
+version: "2"
+
+# golangci-lint v2 configuration for talons-console.
+# Zero-warning policy: all enabled linters must pass with no issues.
+# Note: gosimple is merged into staticcheck in golangci-lint v2.
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  default: none
+  enable:
+    - govet        # Go vet analysis
+    - staticcheck  # Static analysis (includes gosimple checks)
+    - errcheck     # Unchecked error return values
+    - ineffassign  # Ineffective assignments
+    - unused       # Unused code detection
+    - gocyclo      # Cyclomatic complexity (max 15)
+    - lll          # Line length limit (120 chars)
+
+  settings:
+    gocyclo:
+      min-complexity: 15
+    lll:
+      line-length: 120
+
+  exclusions:
+    rules:
+      # Relax errcheck, lll, and unused on test files
+      - path: '_test\.go'
+        linters:
+          - errcheck
+          - lll
+          - unused
+      # Relax lll on doc files
+      - path: 'doc\.go'
+        linters:
+          - lll
+
+formatters:
+  enable:
+    - gofmt        # Formatting enforcement
+    - goimports    # Import formatting and ordering
+
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/rufinus/talons-console
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
