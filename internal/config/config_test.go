@@ -57,68 +57,92 @@ func TestDefaultConfig(t *testing.T) {
 	}
 }
 
-func TestValidate_MissingURL(t *testing.T) {
+// Validate() must NOT fail when URL/token are absent — those are gateway-only fields.
+func TestValidate_EmptyGatewayFields_NoProblems(t *testing.T) {
+	cfg := &Config{
+		URL:      "",
+		Token:    "",
+		Password: "",
+		Thinking: "off",
+	}
+	problems := cfg.Validate()
+	if len(problems) != 0 {
+		t.Errorf("Validate() must not fail on empty gateway fields, got: %v", problems)
+	}
+}
+
+// ValidateGateway tests
+
+func TestValidateGateway_MissingURL(t *testing.T) {
 	cfg := &Config{
 		URL:   "",
 		Token: "some-token",
 	}
-	problems := cfg.Validate()
-	if len(problems) == 0 {
-		t.Fatal("expected validation problems, got none")
+	err := cfg.ValidateGateway()
+	if err == nil {
+		t.Fatal("expected error for missing URL, got nil")
 	}
-	found := false
-	for _, p := range problems {
-		if p == "url is required" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Errorf("expected 'url is required' in problems, got: %v", problems)
+	if !containsSubstr(err.Error(), "gateway URL is required") {
+		t.Errorf("expected 'Gateway URL is required' in error, got: %v", err)
 	}
 }
 
-func TestValidate_InvalidScheme(t *testing.T) {
+func TestValidateGateway_InvalidScheme(t *testing.T) {
 	cfg := &Config{
 		URL:   "http://localhost:8080",
 		Token: "some-token",
 	}
-	problems := cfg.Validate()
-	if len(problems) == 0 {
-		t.Fatal("expected validation problems, got none")
+	err := cfg.ValidateGateway()
+	if err == nil {
+		t.Fatal("expected error for invalid scheme, got nil")
 	}
-	found := false
-	for _, p := range problems {
-		if p == "url must use ws:// or wss:// scheme" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Errorf("expected 'url must use ws:// or wss:// scheme' in problems, got: %v", problems)
+	if !containsSubstr(err.Error(), "ws://") {
+		t.Errorf("expected scheme hint in error, got: %v", err)
 	}
 }
 
-func TestValidate_MissingAuth(t *testing.T) {
+func TestValidateGateway_MissingAuth(t *testing.T) {
 	cfg := &Config{
 		URL:      "wss://example.com",
 		Token:    "",
 		Password: "",
 	}
-	problems := cfg.Validate()
-	if len(problems) == 0 {
-		t.Fatal("expected validation problems, got none")
+	err := cfg.ValidateGateway()
+	if err == nil {
+		t.Fatal("expected error for missing auth, got nil")
 	}
-	found := false
-	for _, p := range problems {
-		if p == "authentication required: provide --token or --password" {
-			found = true
-			break
-		}
+	if !containsSubstr(err.Error(), "authentication required") { //nolint:gocritic
+		t.Errorf("expected auth error, got: %v", err)
 	}
-	if !found {
-		t.Errorf("expected auth error in problems, got: %v", problems)
+}
+
+func TestValidateGateway_Valid(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  *Config
+	}{
+		{"token+ws", &Config{URL: "ws://localhost:3000", Token: "tok"}},
+		{"password+wss", &Config{URL: "wss://example.com", Password: "secret"}},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.cfg.ValidateGateway(); err != nil {
+				t.Errorf("expected no error, got: %v", err)
+			}
+		})
+	}
+}
+
+func containsSubstr(s, sub string) bool {
+	return len(s) >= len(sub) && (s == sub || len(sub) == 0 ||
+		func() bool {
+			for i := 0; i <= len(s)-len(sub); i++ {
+				if s[i:i+len(sub)] == sub {
+					return true
+				}
+			}
+			return false
+		}())
 }
 
 func TestValidate_InvalidThinking(t *testing.T) {
@@ -149,39 +173,30 @@ func TestValidate_Valid(t *testing.T) {
 		cfg  *Config
 	}{
 		{
-			name: "token auth with ws",
+			name: "all fields valid",
 			cfg: &Config{
-				URL:          "ws://localhost:3000",
-				Token:        "valid-token",
 				Thinking:     "off",
 				TimeoutMs:    5000,
 				HistoryLimit: 100,
 			},
 		},
 		{
-			name: "password auth with wss",
-			cfg: &Config{
-				URL:          "wss://example.com",
-				Password:     "secret",
-				Thinking:     "high",
-				TimeoutMs:    0,
-				HistoryLimit: 0,
-			},
-		},
-		{
 			name: "empty thinking string",
 			cfg: &Config{
-				URL:      "ws://localhost",
-				Token:    "tok",
 				Thinking: "",
 			},
 		},
 		{
 			name: "minimal thinking level",
 			cfg: &Config{
-				URL:      "wss://example.com",
-				Token:    "tok",
 				Thinking: "minimal",
+			},
+		},
+		{
+			name: "high thinking level",
+			cfg: &Config{
+				Thinking:  "high",
+				TimeoutMs: 0,
 			},
 		},
 	}

@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/rufinus/talons-console/internal/config"
 )
@@ -15,23 +14,29 @@ var configTestCmd = &cobra.Command{
 	Short: "Validate talons configuration",
 	Long:  "Load and validate talons configuration, displaying resolved settings.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		v := viper.New()
-		cfg, err := config.Load(v)
-		if err != nil {
-			return fmt.Errorf("loading config: %w", err)
+		// Use the globalConfig already populated by PersistentPreRunE (loadConfig).
+		// This ensures --config and other flag overrides are reflected here.
+		cfg := globalConfig
+		if cfg == nil {
+			return fmt.Errorf("internal error: config not loaded")
 		}
 
+		// Run non-gateway validation; report warnings but do not exit non-zero.
 		problems := cfg.Validate()
 		if len(problems) > 0 {
-			fmt.Fprintln(os.Stderr, "Configuration errors:")
+			fmt.Fprintln(os.Stderr, "Configuration warnings:")
 			for _, p := range problems {
 				fmt.Fprintf(os.Stderr, "  - %s\n", p)
 			}
-			os.Exit(1)
+		}
+
+		// Report gateway validation warnings (informational only — not an error).
+		if err := cfg.ValidateGateway(); err != nil {
+			fmt.Fprintf(os.Stderr, "Gateway not configured: %v\n", err)
 		}
 
 		// Display resolved configuration
-		fmt.Println("Configuration valid!")
+		fmt.Println("Configuration loaded successfully.")
 		fmt.Printf("  URL:         %s\n", cfg.URL)
 		fmt.Printf("  Agent:       %s\n", cfg.Agent)
 		fmt.Printf("  Session:     %s\n", cfg.Session)

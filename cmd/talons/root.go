@@ -37,6 +37,10 @@ var (
 	flagMessage      string
 )
 
+// globalConfig holds the parsed configuration set by PersistentPreRunE.
+// All subcommands may read from this after the root pre-run hook executes.
+var globalConfig *config.Config
+
 // Root command
 var rootCmd = &cobra.Command{
 	Use:   "talons",
@@ -46,7 +50,7 @@ Connect to any OpenClaw Gateway via WebSocket and interact with your agents
 from any terminal.`,
 	Version: version.Version,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		return initConfig(cmd)
+		return loadConfig(cmd)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Non-interactive mode
@@ -54,6 +58,22 @@ from any terminal.`,
 			return runNonInteractive(flagMessage)
 		}
 		// Interactive TUI mode
+		return runInteractive()
+	},
+}
+
+// chatCmd is the explicit chat subcommand (requires gateway credentials).
+var chatCmd = &cobra.Command{
+	Use:   "chat",
+	Short: "Connect to the Gateway and start a TUI chat session",
+	Long:  "Open an interactive TUI session with the OpenClaw Gateway.",
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		return requireGatewayConfig()
+	},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if flagMessage != "" {
+			return runNonInteractive(flagMessage)
+		}
 		return runInteractive()
 	},
 }
@@ -75,14 +95,18 @@ func init() {
 
 	// Non-interactive message flag
 	rootCmd.Flags().StringVarP(&flagMessage, "message", "m", "", "Send message non-interactively (implies --no-tui)")
+	chatCmd.Flags().StringVarP(&flagMessage, "message", "m", "", "Send message non-interactively (implies --no-tui)")
 
 	// Add subcommands
+	rootCmd.AddCommand(chatCmd)
 	rootCmd.AddCommand(configTestCmd)
 	rootCmd.AddCommand(updateCheckCmd)
 }
 
-// initConfig loads configuration with precedence: defaults < file < env < flags
-func initConfig(cmd *cobra.Command) error {
+// loadConfig reads and parses the config file (safe for all commands).
+// It does NOT validate Gateway credentials — use requireGatewayConfig() for that.
+// On success it sets globalConfig so all subcommands can access parsed settings.
+func loadConfig(cmd *cobra.Command) error {
 	v := viper.New()
 
 	// Bind flags to viper
@@ -95,19 +119,13 @@ func initConfig(cmd *cobra.Command) error {
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.AutomaticEnv()
 
-	// Load configuration
+	// Load configuration (file parse errors are returned; missing gateway fields are NOT)
 	cfg, err := config.Load(v)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	// Check for concurrent sessions
-	warning := config.CheckConcurrentSession(cfg.Agent, cfg.Session)
-	if warning != "" {
-		fmt.Fprintln(os.Stderr, lipgloss.NewStyle().Foreground(lipgloss.Color("#F9E2AF")).Render(warning))
-	}
-
-	// Validate
+	// Validate non-gateway fields only
 	problems := cfg.Validate()
 	if len(problems) > 0 {
 		for _, p := range problems {
@@ -116,17 +134,32 @@ func initConfig(cmd *cobra.Command) error {
 		return fmt.Errorf("configuration validation failed")
 	}
 
+	globalConfig = cfg
+	return nil
+}
+
+// requireGatewayConfig validates that Gateway URL and authentication are present.
+// Call this from subcommand PreRunE hooks that need a Gateway connection.
+func requireGatewayConfig() error {
+	if globalConfig == nil {
+		return fmt.Errorf("internal error: config not loaded (loadConfig must run first)")
+	}
+	if err := globalConfig.ValidateGateway(); err != nil {
+		return err
+	}
+
+	// Warn about concurrent sessions
+	warning := config.CheckConcurrentSession(globalConfig.Agent, globalConfig.Session)
+	if warning != "" {
+		fmt.Fprintln(os.Stderr, lipgloss.NewStyle().Foreground(lipgloss.Color("#F9E2AF")).Render(warning))
+	}
+
 	return nil
 }
 
 // runInteractive starts the TUI.
 func runInteractive() error {
-	// Get config from viper (already loaded by PersistentPreRunE)
-	v := viper.New()
-	cfg, err := config.Load(v)
-	if err != nil {
-		return fmt.Errorf("loading config: %w", err)
-	}
+	cfg := globalConfig
 
 	// Write PID file for session detection
 	cleanup := config.WritePIDFile(cfg.Agent, cfg.Session, cfg.URL)
@@ -179,11 +212,7 @@ func runInteractive() error {
 
 // runNonInteractive sends a message and streams the response.
 func runNonInteractive(message string) error {
-	v := viper.New()
-	cfg, err := config.Load(v)
-	if err != nil {
-		return fmt.Errorf("loading config: %w", err)
-	}
+	cfg := globalConfig
 
 	client := gateway.NewClient(gateway.ClientConfig{
 		URL:      cfg.URL,

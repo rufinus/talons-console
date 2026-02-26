@@ -96,21 +96,11 @@ func Load(v *viper.Viper) (*Config, error) {
 	return cfg, nil
 }
 
-// Validate returns a list of validation problems. Empty = valid.
+// Validate returns a list of validation problems for non-gateway fields.
+// Empty slice = valid. Gateway credentials (URL, token, password) are NOT
+// checked here — use ValidateGateway() for those.
 func (c *Config) Validate() []string {
 	var problems []string
-
-	// URL checks
-	if c.URL == "" {
-		problems = append(problems, "url is required")
-	} else if !strings.HasPrefix(c.URL, "ws://") && !strings.HasPrefix(c.URL, "wss://") {
-		problems = append(problems, "url must use ws:// or wss:// scheme")
-	}
-
-	// Authentication check
-	if c.Token == "" && c.Password == "" {
-		problems = append(problems, "authentication required: provide --token or --password")
-	}
 
 	// Thinking level check
 	validThinking := map[string]bool{
@@ -136,6 +126,25 @@ func (c *Config) Validate() []string {
 	}
 
 	return problems
+}
+
+// ValidateGateway validates Gateway connection fields (URL and authentication).
+// Returns a descriptive error if any required gateway field is missing or invalid.
+func (c *Config) ValidateGateway() error {
+	// URL checks
+	if c.URL == "" {
+		return fmt.Errorf("gateway URL is required: set url in config or use --url flag")
+	}
+	if !strings.HasPrefix(c.URL, "ws://") && !strings.HasPrefix(c.URL, "wss://") {
+		return fmt.Errorf("gateway URL must use ws:// or wss:// scheme, got: %s", c.URL)
+	}
+
+	// Authentication check
+	if c.Token == "" && c.Password == "" {
+		return fmt.Errorf("gateway authentication required: provide --token or --password (or set in config file)")
+	}
+
+	return nil
 }
 
 // CheckFilePermissions returns warnings for unsafe config file permissions.
