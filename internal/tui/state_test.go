@@ -131,8 +131,6 @@ func TestApplyToSendParams(t *testing.T) {
 	}
 }
 
-
-
 func TestApplyToSendParams_RaceSafety(t *testing.T) {
 	s := NewSessionState(testConfig())
 
