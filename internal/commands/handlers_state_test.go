@@ -2,9 +2,10 @@ package commands
 
 import (
 	"context"
-	tea "github.com/charmbracelet/bubbletea"
 	"testing"
 	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 // execCmd runs a tea.Cmd synchronously (if non-nil) to flush any deferred side-effects.

@@ -116,6 +116,7 @@ func (m *Model) IsConnected() bool {
 func (m *Model) UpdateHeader() {
 	m.header.SetAgent(m.state.GetAgent())
 	m.header.SetSession(m.state.GetSession())
+	m.input.SetStatus(m.buildStatusLine())
 }
 
 func (m *Model) GetWidth() int { return m.width }
@@ -403,11 +404,29 @@ func (m *Model) handleGatewayEvent(event gateway.InboundEvent) tea.Cmd {
 	return nil
 }
 
+// buildStatusLine returns the status footer string for the input area.
+func (m *Model) buildStatusLine() string {
+	agent := m.state.GetAgent()
+	session := m.state.GetSession()
+	model := m.state.GetModel()
+	if model == "" {
+		model = "default"
+	}
+	thinking := m.state.GetThinking()
+	if thinking == "" {
+		thinking = "off"
+	}
+	return fmt.Sprintf("agent: %s  |  session: %s  |  model: %s  |  think: %s",
+		agent, session, model, thinking)
+}
+
 // updateSizes adjusts all components to fit the terminal.
 func (m *Model) updateSizes() {
 	headerHeight := 1
 	inputHeight := 3
-	messagesHeight := m.height - headerHeight - inputHeight - 2
+	// inputBorder adds 2 rows (top+bottom), statusLine adds 1 row
+	inputTotalHeight := inputHeight + 2 + 1
+	messagesHeight := m.height - headerHeight - inputTotalHeight - 1
 
 	if messagesHeight < 10 {
 		messagesHeight = 10
@@ -416,6 +435,7 @@ func (m *Model) updateSizes() {
 	m.header.SetSize(m.width)
 	m.messages.SetSize(m.width, messagesHeight)
 	m.input.SetSize(m.width, inputHeight)
+	m.input.SetStatus(m.buildStatusLine())
 }
 
 // View implements tea.Model. Renders the complete UI.

@@ -201,44 +201,48 @@ func (m *MessagesModel) ClearMessages() {
 	m.currentStreamID = ""
 }
 
-// renderMessage styles a single chat message.
+// renderMessage styles a single chat message using role prefixes and timestamps.
 func renderMessage(msg ChatMessage) string {
-	roleStyle := messageStyleForRole(msg.Role)
+	ts := msg.Timestamp.Format("15:04")
 
-	content := msg.Content
-	if msg.Role == "assistant" && !msg.Streaming {
-		// Use pre-rendered if available
-		if msg.Rendered != "" {
-			content = msg.Rendered
-		} else {
-			content = RenderMarkdown(content, 80)
-		}
-	}
-
-	return roleStyle.Render(content)
-}
-
-func messageStyleForRole(role string) lipgloss.Style {
-	switch role {
+	switch msg.Role {
 	case "user":
-		return userMessageStyle
+		header := userRoleStyle.Render("▶ you") +
+			"  " +
+			timestampStyle.Render(ts)
+		body := userMessageStyle.Render(msg.Content)
+		return header + "\n" + body
+
 	case "assistant":
-		return assistantMessageStyle
+		header := assistantRoleStyle.Render("◀ assistant") +
+			"  " +
+			timestampStyle.Render(ts)
+		content := msg.Content
+		if !msg.Streaming {
+			if msg.Rendered != "" {
+				content = msg.Rendered
+			} else {
+				content = RenderMarkdown(content, 80)
+			}
+		}
+		body := assistantMessageStyle.Render(content)
+		return header + "\n" + body
+
 	case "system":
-		return systemMessageStyle
+		divider := systemDividerStyle.Render("─── " + msg.Content + " ───")
+		return divider
+
 	case "tool":
-		return toolMessageStyle
+		header := toolRoleStyle.Render("⚙ tool") +
+			"  " +
+			timestampStyle.Render(ts)
+		body := toolMessageStyle.Render(msg.Content)
+		return header + "\n" + body
+
 	default:
-		return defaultMessageStyle
+		return defaultMessageStyle.Render(msg.Content)
 	}
 }
 
-var (
-	viewportStyle         = lipgloss.NewStyle()
-	spinnerStyle          = lipgloss.NewStyle().Foreground(lipgloss.Color("#F9E2AF"))
-	userMessageStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#89B4FA"))              // blue
-	assistantMessageStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#A6E3A1"))              // green
-	systemMessageStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#F9E2AF")).Italic(true) // yellow
-	toolMessageStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("#CBA6F7"))              // purple
-	defaultMessageStyle   = lipgloss.NewStyle()
-)
+// Ensure lipgloss is used (styles are defined in styles.go).
+var _ = lipgloss.NewStyle
