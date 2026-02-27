@@ -67,7 +67,7 @@ func (m InputModel) Value() string {
 }
 
 // Reset clears the input.
-func (m InputModel) Reset() {
+func (m *InputModel) Reset() {
 	m.textarea.Reset()
 }
 
