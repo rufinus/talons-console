@@ -28,14 +28,22 @@ type OutboundMessage struct {
 }
 
 // ChatSendParams is the params block for the chat.send method.
+// Field names match the Gateway's ChatSendParamsSchema exactly.
+// additionalProperties: false — no extra fields allowed.
 type ChatSendParams struct {
-	Content        string `json:"content"`
-	SessionKey     string `json:"sessionKey,omitempty"`
-	AgentID        string `json:"agentId,omitempty"`
-	Deliver        bool   `json:"deliver,omitempty"`
+	SessionKey     string `json:"sessionKey"`
+	Message        string `json:"message"`
 	Thinking       string `json:"thinking,omitempty"`
+	Deliver        bool   `json:"deliver,omitempty"`
 	TimeoutMs      int    `json:"timeoutMs,omitempty"`
-	IdempotencyKey string `json:"idempotencyKey,omitempty"`
+	IdempotencyKey string `json:"idempotencyKey"`
+}
+
+// SessionsPatchParams is the params block for the sessions.patch method.
+type SessionsPatchParams struct {
+	Key           string  `json:"key"`
+	Model         *string `json:"model,omitempty"`         // null to clear, string to set
+	ThinkingLevel *string `json:"thinkingLevel,omitempty"` // null to clear, string to set
 }
 
 // HistoryParams is the params block for the chat.history method.
@@ -273,9 +281,9 @@ func parseEventFrame(frame InboundFrame, raw []byte) InboundEvent {
 	switch frame.Event {
 	case "connect.challenge":
 		return parseChallengeEvent(frame, raw)
-	case "chat.event":
+	case "chat":
 		return parseChatEvent(frame, raw)
-	case "agent.event":
+	case "agent":
 		return parseAgentEvent(frame, raw)
 	default:
 		return InboundEvent{Kind: KindUnknown, Raw: json.RawMessage(raw)}

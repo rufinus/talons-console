@@ -26,12 +26,12 @@ func newTestClient(t *testing.T, cfg ClientConfig, mock *MockWebSocketConn) *Cli
 	return c
 }
 
-// buildChatDelta returns a JSON chat.event with state=delta.
+// buildChatDelta returns a JSON chat event with state=delta.
 func buildChatDelta(t *testing.T, content string) []byte {
 	t.Helper()
 	f := InboundFrame{
 		Type:  "event",
-		Event: "chat.event",
+		Event: "chat",
 		Payload: mustJSON(t, ChatEventPayload{
 			State:   "delta",
 			Message: &ChatEventMsg{Role: "assistant", Content: content},
@@ -40,12 +40,12 @@ func buildChatDelta(t *testing.T, content string) []byte {
 	return mustJSON(t, f)
 }
 
-// buildChatFinal returns a JSON chat.event with state=final.
+// buildChatFinal returns a JSON chat event with state=final.
 func buildChatFinal(t *testing.T, content string) []byte {
 	t.Helper()
 	f := InboundFrame{
 		Type:  "event",
-		Event: "chat.event",
+		Event: "chat",
 		Payload: mustJSON(t, ChatEventPayload{
 			State:   "final",
 			Message: &ChatEventMsg{Role: "assistant", Content: content},
@@ -417,4 +417,77 @@ done:
 	assert.True(t, foundExhausted, "expected exhaustion error event, got: %v", got)
 
 	require.NoError(t, c.Close())
+}
+
+// ─────────────────────────────────────────────
+// RequestHistory
+// ─────────────────────────────────────────────
+
+func TestClient_RequestHistory(t *testing.T) {
+	cfg := ClientConfig{URL: "ws://test", Token: "tok", HistoryLimit: 10}
+	c, mock := setupConnectedClient(t, cfg)
+	t.Cleanup(func() { _ = c.Close() })
+
+	err := c.RequestHistory("my-session")
+	require.NoError(t, err)
+
+	// Give the write loop a moment to process
+	time.Sleep(50 * time.Millisecond)
+
+	writes := mock.SentMessages()
+	var found bool
+	for _, w := range writes {
+		var frame OutboundFrame
+		if err := json.Unmarshal(w, &frame); err == nil {
+			if frame.Method == "chat.history" {
+				var p HistoryParams
+				if err := json.Unmarshal(frame.Params, &p); err == nil && p.SessionKey == "my-session" {
+					found = true
+				}
+			}
+		}
+	}
+	assert.True(t, found, "expected chat.history frame with sessionKey=my-session; got: %v", writes)
+}
+
+// ─────────────────────────────────────────────
+// Reconnect (public method)
+// ─────────────────────────────────────────────
+
+func TestClient_Reconnect_SleepsAndConnects(t *testing.T) {
+	var dialCount atomic.Int32
+
+	newMock := func() *MockWebSocketConn {
+		m := &MockWebSocketConn{}
+		m.EnqueueRead(websocket.TextMessage, buildChallengeMsg(t))
+		m.EnqueueRead(websocket.TextMessage, authHelloOK(t))
+		m.ReadErr = ErrConnectionClosed
+		return m
+	}
+
+	cfg := ClientConfig{URL: "ws://test", Token: "tok"}
+	c := NewClient(cfg)
+	c.dial = func(_ context.Context, _ string) (WebSocketConn, error) {
+		dialCount.Add(1)
+		return newMock(), nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	require.NoError(t, c.Connect(ctx))
+	assert.EqualValues(t, 1, dialCount.Load())
+
+	before := time.Now()
+	reconnCtx, reconnCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer reconnCancel()
+
+	err := c.Reconnect(reconnCtx)
+	elapsed := time.Since(before)
+
+	require.NoError(t, err)
+	assert.GreaterOrEqual(t, elapsed, 100*time.Millisecond, "Reconnect must sleep >=100ms before connecting")
+	assert.EqualValues(t, 2, dialCount.Load(), "expected exactly one additional dial after Reconnect")
+
+	_ = c.Close()
 }

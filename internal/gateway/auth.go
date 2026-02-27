@@ -101,13 +101,13 @@ func sendConnectRequest(conn WebSocketConn, auth AuthConfig) error {
 		MinProtocol: 3,
 		MaxProtocol: 3,
 		Client: ClientInfo{
-			ID:       "cli",
+			ID:       "openclaw-control-ui",
 			Version:  version.Version,
 			Platform: "cli",
-			Mode:     "interactive",
+			Mode:     "cli",
 		},
 		Role:      "operator",
-		Scopes:    []string{"operator.read", "operator.write"},
+		Scopes:    []string{"operator.admin", "operator.read", "operator.write", "operator.approvals", "operator.pairing"},
 		Auth:      AuthCredentials(auth),
 		UserAgent: fmt.Sprintf("talons/%s", version.Version),
 	}

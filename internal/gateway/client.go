@@ -116,9 +116,10 @@ func (c *Client) Connect(ctx context.Context) error {
 	c.emitEvent(result)
 	c.startLoops(conn)
 
-	// Request history after connect
+	// Request history after connect using full session key format.
 	if c.cfg.HistoryLimit > 0 {
-		_ = c.sendHistoryRequest(c.cfg.Session, conn)
+		sessionKey := fmt.Sprintf("agent:%s:%s", c.cfg.Agent, c.cfg.Session)
+		_ = c.sendHistoryRequest(sessionKey, conn)
 	}
 
 	return nil
@@ -184,6 +185,49 @@ func (c *Client) State() ConnectionState {
 	return ConnectionState(c.state.Load())
 }
 
+// RequestHistory is the public version of sendHistoryRequest.
+// It sends a chat.history request for the given session key using the current
+// active connection.
+func (c *Client) RequestHistory(sessionKey string) error {
+	c.connMu.RLock()
+	conn := c.conn
+	c.connMu.RUnlock()
+	if conn == nil {
+		return ErrShutdown
+	}
+	return c.sendHistoryRequest(sessionKey, conn)
+}
+
+// PatchSession sends a sessions.patch request to the Gateway.
+func (c *Client) PatchSession(params SessionsPatchParams) error {
+	return c.Send(OutboundMessage{
+		Type:    "sessions.patch",
+		Payload: params,
+	})
+}
+
+// Reconnect performs a single close + 100ms sleep + reconnect attempt.
+// The caller is responsible for enforcing an overall timeout via ctx.
+// This method does NOT implement retry/backoff — that is the automatic
+// reconnect loop's responsibility.
+func (c *Client) Reconnect(ctx context.Context) error {
+	if err := c.Close(); err != nil {
+		return fmt.Errorf("close before reconnect: %w", err)
+	}
+	// Re-initialise the quit channel and inbound/outbound channels so the
+	// client can be used again after Close().
+	c.quit = make(chan struct{})
+	c.outbound = make(chan OutboundMessage, 64)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	return c.Connect(ctx)
+}
+
 // ─────────────────────────────────────────────
 // Internal — dial
 // ─────────────────────────────────────────────
@@ -193,6 +237,7 @@ func (c *Client) defaultDial(ctx context.Context, url string) (WebSocketConn, er
 	dialer := &websocket.Dialer{HandshakeTimeout: 15 * time.Second}
 	header := http.Header{
 		"User-Agent": []string{fmt.Sprintf("talons/%s", c.cfg.ClientVersion)},
+		"Origin":     []string{wsURLToHTTP(url)},
 	}
 	conn, _, err := dialer.DialContext(ctx, url, header)
 	if err != nil {
@@ -393,5 +438,18 @@ func (c *Client) emitEvent(evt InboundEvent) {
 	select {
 	case c.inbound <- evt:
 	case <-c.quit:
+	}
+}
+
+// wsURLToHTTP converts a ws:// or wss:// URL to http:// or https:// for the
+// Origin header. The gateway uses this to verify the connection is local.
+func wsURLToHTTP(wsURL string) string {
+	switch {
+	case len(wsURL) > 6 && wsURL[:6] == "wss://":
+		return "https://" + wsURL[6:]
+	case len(wsURL) > 5 && wsURL[:5] == "ws://":
+		return "http://" + wsURL[5:]
+	default:
+		return wsURL
 	}
 }

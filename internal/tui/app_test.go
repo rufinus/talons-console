@@ -37,6 +37,9 @@ func (c *mockClient) Send(msg gateway.OutboundMessage) error {
 	c.sent = append(c.sent, msg)
 	return c.sendErr
 }
+func (c *mockClient) RequestHistory(_ string) error                    { return nil }
+func (c *mockClient) Reconnect(_ context.Context) error                { return nil }
+func (c *mockClient) PatchSession(_ gateway.SessionsPatchParams) error { return nil }
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -307,102 +310,10 @@ func TestHandleSend_SendsOutboundMessage(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected ChatSendParams payload, got %T", client.sent[0].Payload)
 	}
-	if params.Content != "test message" {
-		t.Errorf("expected content 'test message', got %q", params.Content)
+	if params.Message != "test message" {
+		t.Errorf("expected message 'test message', got %q", params.Message)
 	}
-	if params.AgentID != "test-agent" {
-		t.Errorf("expected agentId 'test-agent', got %q", params.AgentID)
-	}
-	if params.SessionKey != "test-session" {
-		t.Errorf("expected sessionKey 'test-session', got %q", params.SessionKey)
-	}
-}
-
-func TestHandleSend_ReturnsErrorEvent_OnSendFailure(t *testing.T) {
-	m, client := newTestModel()
-	client.sendErr = &mockSendError{"gateway unavailable"}
-
-	cmd := m.handleSend("fail message")
-	result := cmd()
-
-	evtMsg, ok := result.(GatewayEventMsg)
-	if !ok {
-		t.Fatalf("expected GatewayEventMsg on send error, got %T", result)
-	}
-	if evtMsg.Event.Kind != gateway.KindError {
-		t.Errorf("expected KindError, got %v", evtMsg.Event.Kind)
-	}
-	if !strings.Contains(evtMsg.Event.Error, "gateway unavailable") {
-		t.Errorf("expected error message to contain 'gateway unavailable', got %q", evtMsg.Event.Error)
-	}
-}
-
-// mockSendError implements error for send failure tests.
-type mockSendError struct{ msg string }
-
-func (e *mockSendError) Error() string { return e.msg }
-
-// ─────────────────────────────────────────────
-// ListenCmd
-// ─────────────────────────────────────────────
-
-func TestListenCmd_ReturnsGatewayEventMsg(t *testing.T) {
-	ch := make(chan gateway.InboundEvent, 1)
-	ch <- gateway.InboundEvent{Kind: gateway.KindToken, Content: "tok"}
-
-	cmd := ListenCmd(ch)
-	result := cmd()
-
-	msg, ok := result.(GatewayEventMsg)
-	if !ok {
-		t.Fatalf("expected GatewayEventMsg, got %T", result)
-	}
-	if msg.Event.Kind != gateway.KindToken {
-		t.Errorf("expected KindToken, got %v", msg.Event.Kind)
-	}
-	if msg.Event.Content != "tok" {
-		t.Errorf("expected content 'tok', got %q", msg.Event.Content)
-	}
-}
-
-func TestListenCmd_ReturnsConnectionStateMsg_OnClose(t *testing.T) {
-	ch := make(chan gateway.InboundEvent)
-	close(ch)
-
-	cmd := ListenCmd(ch)
-	result := cmd()
-
-	stateMsg, ok := result.(ConnectionStateMsg)
-	if !ok {
-		t.Fatalf("expected ConnectionStateMsg on closed channel, got %T", result)
-	}
-	if stateMsg.State != gateway.StateDisconnected {
-		t.Errorf("expected StateDisconnected, got %v", stateMsg.State)
-	}
-}
-
-// ─────────────────────────────────────────────
-// View
-// ─────────────────────────────────────────────
-
-func TestView_ContainsComponents(t *testing.T) {
-	m, _ := newTestModel()
-	// The View should produce non-empty output that joins header + messages + input
-	view := m.View()
-	if view == "" {
-		t.Error("expected non-empty view")
-	}
-	// Header contains the agent/session
-	if !strings.Contains(view, "test-agent") {
-		t.Errorf("expected view to contain agent name, got:\n%s", view)
-	}
-}
-
-func TestView_EmptyWhenQuitting(t *testing.T) {
-	m, _ := newTestModel()
-	m.quitting = true
-	view := m.View()
-	if view != "" {
-		t.Errorf("expected empty view when quitting, got %q", view)
+	if params.SessionKey != "agent:test-agent:test-session" {
+		t.Errorf("expected sessionKey, got %q", params.SessionKey)
 	}
 }

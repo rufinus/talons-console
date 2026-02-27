@@ -33,6 +33,8 @@ type MockGateway struct {
 	// Received messages
 	receivedMu       sync.RWMutex
 	receivedMessages []gateway.OutboundMessage
+	receivedFrames   []gateway.OutboundFrame
+	historyFrames    []gateway.OutboundFrame
 }
 
 type mockClient struct {
@@ -52,6 +54,8 @@ func NewMockGateway() *MockGateway {
 		features:         []string{"chat.send", "chat.history", "streaming"},
 		version:          "2.5.0-mock",
 		receivedMessages: make([]gateway.OutboundMessage, 0),
+		receivedFrames:   make([]gateway.OutboundFrame, 0),
+		historyFrames:    make([]gateway.OutboundFrame, 0),
 	}
 }
 
@@ -112,6 +116,14 @@ func (m *MockGateway) ReceivedMessages() []gateway.OutboundMessage {
 	return append([]gateway.OutboundMessage{}, m.receivedMessages...)
 }
 
+// ReceivedFrames returns all raw OutboundFrames received from clients.
+// Frames preserve the original Method and Params fields for detailed assertion.
+func (m *MockGateway) ReceivedFrames() []gateway.OutboundFrame {
+	m.receivedMu.RLock()
+	defer m.receivedMu.RUnlock()
+	return append([]gateway.OutboundFrame{}, m.receivedFrames...)
+}
+
 // WaitForReceivedCount polls until at least n messages have been received by
 // the mock, or the timeout expires. Returns true when the count is reached.
 func (m *MockGateway) WaitForReceivedCount(n int, timeout time.Duration) bool {
@@ -159,7 +171,7 @@ func (m *MockGateway) SendToken(clientID string, content string) error {
 
 	frame := map[string]any{
 		"type":  "event",
-		"event": "chat.event",
+		"event": "chat",
 		"payload": map[string]any{
 			"state": "delta",
 			"message": map[string]any{
@@ -183,7 +195,7 @@ func (m *MockGateway) SendMessageComplete(clientID string) error {
 
 	frame := map[string]any{
 		"type":  "event",
-		"event": "chat.event",
+		"event": "chat",
 		"payload": map[string]any{
 			"state": "final",
 			"message": map[string]any{
@@ -305,6 +317,7 @@ func (m *MockGateway) handleChatSend(client *mockClient, frame gateway.OutboundF
 	if err := json.Unmarshal(raw, &msg); err == nil {
 		m.receivedMu.Lock()
 		m.receivedMessages = append(m.receivedMessages, msg)
+		m.receivedFrames = append(m.receivedFrames, frame)
 		m.receivedMu.Unlock()
 	}
 
@@ -321,8 +334,34 @@ func (m *MockGateway) handleChatSend(client *mockClient, frame gateway.OutboundF
 	client.mu.Unlock()
 }
 
+// HistoryFrames returns all chat.history frames received from clients.
+func (m *MockGateway) HistoryFrames() []gateway.OutboundFrame {
+	m.receivedMu.RLock()
+	defer m.receivedMu.RUnlock()
+	return append([]gateway.OutboundFrame{}, m.historyFrames...)
+}
+
+// WaitForHistoryCount polls until at least n history requests have been received, or timeout.
+func (m *MockGateway) WaitForHistoryCount(n int, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		m.receivedMu.RLock()
+		count := len(m.historyFrames)
+		m.receivedMu.RUnlock()
+		if count >= n {
+			return true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return false
+}
+
 // handleHistory handles a history request.
 func (m *MockGateway) handleHistory(client *mockClient, frame gateway.OutboundFrame) {
+	m.receivedMu.Lock()
+	m.historyFrames = append(m.historyFrames, frame)
+	m.receivedMu.Unlock()
+
 	response := map[string]any{
 		"type":   "res",
 		"id":     frame.ID,

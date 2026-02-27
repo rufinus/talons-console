@@ -80,9 +80,8 @@ func TestSendAndReceive(t *testing.T) {
 		err := client.Send(gateway.OutboundMessage{
 			Type: "chat.send",
 			Payload: gateway.ChatSendParams{
-				Content:    "Hello",
+				Message:    "Hello",
 				SessionKey: "test-session",
-				AgentID:    "test-agent",
 			},
 		})
 		require.NoError(t, err)
@@ -191,9 +190,8 @@ func TestMessageQueueDuringDisconnect(t *testing.T) {
 	err := client.Send(gateway.OutboundMessage{
 		Type: "chat.send",
 		Payload: gateway.ChatSendParams{
-			Content:    "Queued message",
+			Message:    "Queued message",
 			SessionKey: "test-session",
-			AgentID:    "test-agent",
 		},
 	})
 	// Should not error - message is queued

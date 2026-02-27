@@ -7,9 +7,10 @@ import (
 
 // InputModel handles text input for user messages.
 type InputModel struct {
-	textarea textarea.Model
-	height   int
-	focused  bool
+	textarea   textarea.Model
+	height     int
+	focused    bool
+	statusLine string // status footer set by parent
 }
 
 // NewInputModel creates a new InputModel.
@@ -58,7 +59,16 @@ func (m InputModel) View() string {
 	if !m.focused {
 		return ""
 	}
-	return m.textarea.View()
+	bordered := inputBorderStyle.Render(m.textarea.View())
+	if m.statusLine == "" {
+		return bordered
+	}
+	return bordered + "\n" + statusLineStyle.Render(m.statusLine)
+}
+
+// SetStatus sets the status footer shown below the input border.
+func (m *InputModel) SetStatus(s string) {
+	m.statusLine = s
 }
 
 // Value returns the current input value.
@@ -67,7 +77,7 @@ func (m InputModel) Value() string {
 }
 
 // Reset clears the input.
-func (m InputModel) Reset() {
+func (m *InputModel) Reset() {
 	m.textarea.Reset()
 }
 
@@ -105,4 +115,10 @@ func (m InputModel) Focused() bool {
 // SetPlaceholder sets the placeholder text.
 func (m *InputModel) SetPlaceholder(p string) {
 	m.textarea.Placeholder = p
+}
+
+// SetValue sets the input value and moves the cursor to the end.
+func (m *InputModel) SetValue(v string) {
+	m.textarea.SetValue(v)
+	m.textarea.CursorEnd()
 }

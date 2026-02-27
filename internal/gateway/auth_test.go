@@ -118,7 +118,7 @@ func TestAuthenticate_SuccessToken(t *testing.T) {
 	require.NoError(t, json.Unmarshal(outFrame.Params, &params))
 	assert.Equal(t, "my-secret-token", params.Auth.Token)
 	assert.Equal(t, "operator", params.Role)
-	assert.Equal(t, []string{"operator.read", "operator.write"}, params.Scopes)
+	assert.Equal(t, []string{"operator.admin", "operator.read", "operator.write", "operator.approvals", "operator.pairing"}, params.Scopes)
 	assert.Equal(t, 3, params.MinProtocol)
 	assert.Equal(t, 3, params.MaxProtocol)
 }

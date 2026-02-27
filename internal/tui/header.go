@@ -34,36 +34,60 @@ func (m *HeaderModel) SetConnectionState(state gateway.ConnectionState) {
 	m.connectionState = state
 }
 
+// SetAgent updates the agent field displayed in the header.
+func (m *HeaderModel) SetAgent(name string) {
+	m.agent = name
+}
+
+// SetSession updates the session field displayed in the header.
+func (m *HeaderModel) SetSession(key string) {
+	m.session = key
+}
+
 // SetSize updates the header width.
 func (m *HeaderModel) SetSize(width int) {
 	m.width = width
 }
 
-// View renders the header.
+// View renders the header as a full-width styled bar:
+//
+//	● Connected  main / main                        talons v0.2.0
 func (m HeaderModel) View() string {
-	stateStr := m.stateLabel()
-	stateStyle := m.stateStyle()
+	dot, dotStyle := m.statusDot()
+	connLabel := m.connectionLabel()
+	left := dotStyle.Render(dot) + " " + connLabel
 
-	left := stateStyle.Render(stateStr)
+	center := m.agent + " / " + m.session
 	right := fmt.Sprintf("talons %s", m.version)
 
-	// Build status string
-	var status strings.Builder
-	status.WriteString(m.agent)
-	status.WriteString(" / ")
-	status.WriteString(m.session)
+	leftW := lipgloss.Width(left)
+	rightW := lipgloss.Width(right)
+	centerW := lipgloss.Width(center)
 
-	// Layout: [state] agent/session | talons vX.X.X
-	// Use spaces to pad to width
-	content := fmt.Sprintf("%s %s | %s", left, status.String(), right)
-	if len(content) < m.width {
-		content += strings.Repeat(" ", m.width-len(content))
+	// Total inner width minus padding (2 chars from Padding(0,1) on each side = 2)
+	inner := m.width - 2
+	if inner < 0 {
+		inner = 0
 	}
 
-	return content
+	// Space available for centering after left and right sections
+	sideGap := inner - leftW - rightW - centerW
+	if sideGap < 2 {
+		sideGap = 2
+	}
+	leftPad := sideGap / 2
+	rightPad := sideGap - leftPad
+
+	content := left +
+		strings.Repeat(" ", leftPad) +
+		center +
+		strings.Repeat(" ", rightPad) +
+		right
+
+	return headerStyle.Width(m.width).Render(content)
 }
 
-func (m HeaderModel) stateLabel() string {
+func (m HeaderModel) connectionLabel() string {
 	switch m.connectionState {
 	case gateway.StateConnected:
 		return "Connected"
@@ -78,20 +102,13 @@ func (m HeaderModel) stateLabel() string {
 	}
 }
 
-func (m HeaderModel) stateStyle() lipgloss.Style {
+func (m HeaderModel) statusDot() (string, lipgloss.Style) {
 	switch m.connectionState {
 	case gateway.StateConnected:
-		return headerConnected
+		return "●", headerConnectedStyle
+	case gateway.StateConnecting, gateway.StateAuthenticating, gateway.StateReconnecting:
+		return "◌", headerConnectingStyle
 	default:
-		return headerDefault
+		return "○", headerDisconnectedStyle
 	}
 }
-
-var (
-	headerConnected = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#04B575")). // green
-			Bold(true)
-	headerDefault = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#F9E2AF")). // yellow
-			Bold(true)
-)

@@ -25,6 +25,16 @@ type GatewayClient interface {
 
 	// State returns the current connection state.
 	State() ConnectionState
+
+	// RequestHistory sends a chat.history request for the given session key.
+	RequestHistory(sessionKey string) error
+
+	// Reconnect performs a single close + 100ms sleep + reconnect attempt.
+	// The caller is responsible for enforcing an overall timeout via ctx.
+	Reconnect(ctx context.Context) error
+
+	// PatchSession sends a sessions.patch request to the Gateway.
+	PatchSession(params SessionsPatchParams) error
 }
 
 // WebSocketConn abstracts the gorilla/websocket connection for testing.
