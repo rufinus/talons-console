@@ -69,9 +69,15 @@ func HandleModel(ctx HandlerContext, args []string) tea.Cmd {
 		return nil
 	}
 
-	ctx.SetModel(id)
-	ctx.AppendSystemMessage(fmt.Sprintf("Model set to '%s'", id))
-	return nil
+	return func() tea.Msg {
+		if err := ctx.PatchSession(SessionPatch{Model: &id}); err != nil {
+			ctx.AppendSystemMessage(CmdError("model", fmt.Sprintf("patch failed: %s", err)))
+			return nil
+		}
+		ctx.SetModel(id)
+		ctx.AppendSystemMessage(fmt.Sprintf("Model set to '%s'", id))
+		return nil
+	}
 }
 
 // HandleThinking implements the /thinking command.
@@ -93,9 +99,15 @@ func HandleThinking(ctx HandlerContext, args []string) tea.Cmd {
 		return nil
 	}
 
-	ctx.SetThinking(level)
-	ctx.AppendSystemMessage(fmt.Sprintf("Thinking set to '%s'", level))
-	return nil
+	return func() tea.Msg {
+		if err := ctx.PatchSession(SessionPatch{ThinkingLevel: &level}); err != nil {
+			ctx.AppendSystemMessage(CmdError("thinking", fmt.Sprintf("patch failed: %s", err)))
+			return nil
+		}
+		ctx.SetThinking(level)
+		ctx.AppendSystemMessage(fmt.Sprintf("Thinking set to '%s'", level))
+		return nil
+	}
 }
 
 // HandleTimeout implements the /timeout command.

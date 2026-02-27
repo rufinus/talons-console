@@ -171,7 +171,7 @@ func (m *MockGateway) SendToken(clientID string, content string) error {
 
 	frame := map[string]any{
 		"type":  "event",
-		"event": "chat.event",
+		"event": "chat",
 		"payload": map[string]any{
 			"state": "delta",
 			"message": map[string]any{
@@ -195,7 +195,7 @@ func (m *MockGateway) SendMessageComplete(clientID string) error {
 
 	frame := map[string]any{
 		"type":  "event",
-		"event": "chat.event",
+		"event": "chat",
 		"payload": map[string]any{
 			"state": "final",
 			"message": map[string]any{

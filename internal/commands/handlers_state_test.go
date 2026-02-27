@@ -2,9 +2,17 @@ package commands
 
 import (
 	"context"
+	tea "github.com/charmbracelet/bubbletea"
 	"testing"
 	"time"
 )
+
+// execCmd runs a tea.Cmd synchronously (if non-nil) to flush any deferred side-effects.
+func execCmd(cmd tea.Cmd) {
+	if cmd != nil {
+		cmd()
+	}
+}
 
 // stateTestMock is a test double for HandlerContext.
 type stateTestMock struct {
@@ -45,6 +53,8 @@ func (m *stateTestMock) Reconnect(_ context.Context) error { return nil }
 func (m *stateTestMock) CloseGateway() error               { return nil }
 func (m *stateTestMock) UpdateHeader()                     {}
 func (m *stateTestMock) GetWidth() int                     { return 80 }
+func (m *stateTestMock) GetSessionKey() string             { return "agent:test-agent:test-session" }
+func (m *stateTestMock) PatchSession(_ SessionPatch) error { return nil }
 
 func (m *stateTestMock) lastMsg() string {
 	if len(m.messages) == 0 {
@@ -81,7 +91,7 @@ func TestHandleModel_NoArgs_WithValue(t *testing.T) {
 
 func TestHandleModel_ValidID(t *testing.T) {
 	ctx := newStateMock()
-	HandleModel(ctx, []string{"claude-opus-4-5"})
+	execCmd(HandleModel(ctx, []string{"claude-opus-4-5"}))
 	if !ctx.setModelCalled {
 		t.Error("SetModel should be called")
 	}
@@ -134,7 +144,7 @@ func TestHandleModel_SameValue_NoOp(t *testing.T) {
 
 func TestHandleModel_LeadingSlashStripped(t *testing.T) {
 	ctx := newStateMock()
-	HandleModel(ctx, []string{"/gpt-4o"})
+	execCmd(HandleModel(ctx, []string{"/gpt-4o"}))
 	if ctx.model != "gpt-4o" {
 		t.Errorf("expected leading slash stripped, got %q", ctx.model)
 	}
@@ -150,7 +160,7 @@ func TestHandleModel_EmptyString(t *testing.T) {
 
 func TestHandleModel_SlashAllowed(t *testing.T) {
 	ctx := newStateMock()
-	HandleModel(ctx, []string{"provider/model-name"})
+	execCmd(HandleModel(ctx, []string{"provider/model-name"}))
 	if !ctx.setModelCalled {
 		t.Error("SetModel should be called for provider/model-name")
 	}
@@ -158,7 +168,7 @@ func TestHandleModel_SlashAllowed(t *testing.T) {
 
 func TestHandleModel_DotAllowed(t *testing.T) {
 	ctx := newStateMock()
-	HandleModel(ctx, []string{"gpt-4.0"})
+	execCmd(HandleModel(ctx, []string{"gpt-4.0"}))
 	if !ctx.setModelCalled {
 		t.Error("SetModel should be called for gpt-4.0")
 	}
@@ -200,7 +210,7 @@ func TestHandleThinking_ValidLevels(t *testing.T) {
 	for _, lvl := range levels {
 		t.Run(lvl, func(t *testing.T) {
 			ctx := newStateMock()
-			HandleThinking(ctx, []string{lvl})
+			execCmd(HandleThinking(ctx, []string{lvl}))
 			if !ctx.setThinkingCalled {
 				t.Error("SetThinking should be called")
 			}
@@ -216,7 +226,7 @@ func TestHandleThinking_ValidLevels(t *testing.T) {
 
 func TestHandleThinking_UppercaseNormalised(t *testing.T) {
 	ctx := newStateMock()
-	HandleThinking(ctx, []string{"HIGH"})
+	execCmd(HandleThinking(ctx, []string{"HIGH"}))
 	if ctx.thinking != "high" {
 		t.Errorf("thinking = %q, want 'high'", ctx.thinking)
 	}

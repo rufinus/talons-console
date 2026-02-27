@@ -120,6 +120,19 @@ func (m *Model) UpdateHeader() {
 
 func (m *Model) GetWidth() int { return m.width }
 
+func (m *Model) GetSessionKey() string {
+	return fmt.Sprintf("agent:%s:%s", m.state.GetAgent(), m.state.GetSession())
+}
+
+func (m *Model) PatchSession(patch commands.SessionPatch) error {
+	params := gateway.SessionsPatchParams{
+		Key:           m.GetSessionKey(),
+		Model:         patch.Model,
+		ThinkingLevel: patch.ThinkingLevel,
+	}
+	return m.client.PatchSession(params)
+}
+
 // ─────────────────────────────────────────────
 // ListenCmd / listenForMessages
 // ─────────────────────────────────────────────

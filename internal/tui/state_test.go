@@ -120,11 +120,11 @@ func TestApplyToSendParams(t *testing.T) {
 	s.ApplyToSendParams(params)
 
 	if params.SessionKey != "agent:test-agent:test-session" {
-		t.Errorf("AgentID: got %q, want %q", params.SessionKey, "agent:test-agent:test-session")
+		t.Errorf("SessionKey: got %q, want %q", params.SessionKey, "agent:test-agent:test-session")
 	}
-	// SessionKey already checked above
-	if params.Thinking != "low" {
-		t.Errorf("Thinking: got %q", params.Thinking)
+	// Thinking is now set via sessions.patch, not per-message — it must be empty here.
+	if params.Thinking != "" {
+		t.Errorf("Thinking: got %q, want empty (thinking is set via sessions.patch)", params.Thinking)
 	}
 	if params.TimeoutMs != 30000 {
 		t.Errorf("TimeoutMs: got %d", params.TimeoutMs)

@@ -51,6 +51,8 @@ func (m *mockContext) GetMsgSent() int                   { return 0 }
 func (m *mockContext) GetMsgRecv() int                   { return 0 }
 func (m *mockContext) UpdateHeader()                     { m.updateHeaderCalled = true }
 func (m *mockContext) GetWidth() int                     { return 80 }
+func (m *mockContext) GetSessionKey() string             { return "agent:" + m.agent + ":" + m.session }
+func (m *mockContext) PatchSession(_ SessionPatch) error { return nil }
 func (m *mockContext) CloseGateway() error               { return nil }
 func (m *mockContext) Reconnect(_ context.Context) error { m.reconnectCalled = true; return nil }
 func (m *mockContext) RequestHistory(key string) error {

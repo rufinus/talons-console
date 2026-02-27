@@ -49,7 +49,7 @@ func TestParseInbound(t *testing.T) {
 					Server:   HelloServerInfo{Version: "2.5.0", ConnID: "conn-1"},
 					Features: HelloFeatures{
 						Methods: []string{"chat.send"},
-						Events:  []string{"chat.event"},
+						Events:  []string{"chat"},
 					},
 				}),
 			}),
@@ -58,7 +58,7 @@ func TestParseInbound(t *testing.T) {
 				assert.True(t, evt.Success)
 				assert.Equal(t, "2.5.0", evt.Version)
 				assert.Contains(t, evt.Features, "chat.send")
-				assert.Contains(t, evt.Features, "chat.event")
+				assert.Contains(t, evt.Features, "chat")
 			},
 		},
 
@@ -86,7 +86,7 @@ func TestParseInbound(t *testing.T) {
 			name: "chat.event delta (streaming token)",
 			input: mustJSON(t, InboundFrame{
 				Type:  "event",
-				Event: "chat.event",
+				Event: "chat",
 				Payload: mustJSON(t, ChatEventPayload{
 					RunID:      "run-1",
 					SessionKey: "main",
@@ -107,7 +107,7 @@ func TestParseInbound(t *testing.T) {
 			name: "chat.event final (complete message)",
 			input: mustJSON(t, InboundFrame{
 				Type:  "event",
-				Event: "chat.event",
+				Event: "chat",
 				Payload: mustJSON(t, ChatEventPayload{
 					RunID:      "run-1",
 					SessionKey: "main",
@@ -128,7 +128,7 @@ func TestParseInbound(t *testing.T) {
 			name: "chat.event aborted",
 			input: mustJSON(t, InboundFrame{
 				Type:  "event",
-				Event: "chat.event",
+				Event: "chat",
 				Payload: mustJSON(t, ChatEventPayload{
 					State:    "aborted",
 					ErrorMsg: "request cancelled",
@@ -146,7 +146,7 @@ func TestParseInbound(t *testing.T) {
 			name: "chat.event error state",
 			input: mustJSON(t, InboundFrame{
 				Type:  "event",
-				Event: "chat.event",
+				Event: "chat",
 				Payload: mustJSON(t, ChatEventPayload{
 					State:    "error",
 					ErrorMsg: "agent timeout",
@@ -163,7 +163,7 @@ func TestParseInbound(t *testing.T) {
 			name: "agent.event (tool call)",
 			input: mustJSON(t, InboundFrame{
 				Type:  "event",
-				Event: "agent.event",
+				Event: "agent",
 				Payload: mustJSON(t, AgentEventPayload{
 					RunID:  "run-1",
 					Stream: "read",
@@ -249,7 +249,7 @@ func TestParseInbound(t *testing.T) {
 			name: "chat.event delta empty content",
 			input: mustJSON(t, InboundFrame{
 				Type:  "event",
-				Event: "chat.event",
+				Event: "chat",
 				Payload: mustJSON(t, ChatEventPayload{
 					State:   "delta",
 					Message: &ChatEventMsg{Role: "assistant", Content: ""},
@@ -266,7 +266,7 @@ func TestParseInbound(t *testing.T) {
 			name: "chat.event delta no message",
 			input: mustJSON(t, InboundFrame{
 				Type:    "event",
-				Event:   "chat.event",
+				Event:   "chat",
 				Payload: mustJSON(t, ChatEventPayload{State: "delta"}),
 			}),
 			wantKind: KindToken,

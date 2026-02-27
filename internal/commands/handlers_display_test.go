@@ -64,6 +64,8 @@ func (m *displayMockCtx) GetMsgSent() int                        { return m.msgS
 func (m *displayMockCtx) GetMsgRecv() int                        { return m.msgRecv }
 func (m *displayMockCtx) UpdateHeader()                          {}
 func (m *displayMockCtx) GetWidth() int                          { return m.width }
+func (m *displayMockCtx) GetSessionKey() string                  { return "agent:" + m.agent + ":" + m.session }
+func (m *displayMockCtx) PatchSession(_ SessionPatch) error      { return nil }
 func (m *displayMockCtx) RequestHistory(sessionKey string) error { return nil }
 func (m *displayMockCtx) Reconnect(ctx context.Context) error    { return nil }
 func (m *displayMockCtx) CloseGateway() error {

@@ -207,12 +207,10 @@ func (s *SessionState) ApplyToSendParams(params *gateway.ChatSendParams) {
 	s.mu.RLock()
 	agent := s.Agent
 	session := s.Session
-	thinking := s.Thinking
 	timeoutMs := s.TimeoutMs
 	s.mu.RUnlock()
 
 	params.SessionKey = fmt.Sprintf("agent:%s:%s", agent, session)
-	params.Thinking = thinking
 	params.TimeoutMs = timeoutMs
 }
 

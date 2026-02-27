@@ -281,9 +281,9 @@ func parseEventFrame(frame InboundFrame, raw []byte) InboundEvent {
 	switch frame.Event {
 	case "connect.challenge":
 		return parseChallengeEvent(frame, raw)
-	case "chat.event":
+	case "chat":
 		return parseChatEvent(frame, raw)
-	case "agent.event":
+	case "agent":
 		return parseAgentEvent(frame, raw)
 	default:
 		return InboundEvent{Kind: KindUnknown, Raw: json.RawMessage(raw)}

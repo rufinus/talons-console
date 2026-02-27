@@ -53,4 +53,15 @@ type HandlerContext interface {
 	// Display helpers
 	UpdateHeader()
 	GetWidth() int
+
+	// Session patching
+	GetSessionKey() string
+	PatchSession(patch SessionPatch) error
+}
+
+// SessionPatch holds the fields for a sessions.patch call.
+// Only includes fields used by command handlers.
+type SessionPatch struct {
+	Model         *string
+	ThinkingLevel *string
 }

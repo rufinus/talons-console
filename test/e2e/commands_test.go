@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -19,6 +20,13 @@ import (
 	"github.com/rufinus/talons-console/internal/gateway"
 	"github.com/rufinus/talons-console/test/mocks"
 )
+
+// execCmd runs a tea.Cmd synchronously (if non-nil) to flush deferred side-effects.
+func execCmd(cmd tea.Cmd) {
+	if cmd != nil {
+		cmd()
+	}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -96,28 +104,30 @@ func newFakeCtx(agent, session string) *fakeHandlerContext {
 	}
 }
 
-func (f *fakeHandlerContext) AppendSystemMessage(msg string)    { f.msgs = append(f.msgs, msg) }
-func (f *fakeHandlerContext) ClearMessages()                    {}
-func (f *fakeHandlerContext) GetAgent() string                  { return f.agent }
-func (f *fakeHandlerContext) SetAgent(name string)              { f.agent = name }
-func (f *fakeHandlerContext) GetSession() string                { return f.session }
-func (f *fakeHandlerContext) SetSession(key string)             { f.session = key }
-func (f *fakeHandlerContext) GetModel() string                  { return f.model }
-func (f *fakeHandlerContext) SetModel(model string)             { f.model = model }
-func (f *fakeHandlerContext) GetThinking() string               { return f.thinking }
-func (f *fakeHandlerContext) SetThinking(level string)          { f.thinking = level }
-func (f *fakeHandlerContext) GetTimeoutMs() int                 { return f.timeoutMs }
-func (f *fakeHandlerContext) SetTimeoutMs(ms int)               { f.timeoutMs = ms }
-func (f *fakeHandlerContext) GetGatewayURL() string             { return "ws://localhost:0" }
-func (f *fakeHandlerContext) IsConnected() bool                 { return f.connected }
-func (f *fakeHandlerContext) GetVersion() string                { return "0.0.0-test" }
-func (f *fakeHandlerContext) GetUptime() time.Duration          { return 0 }
-func (f *fakeHandlerContext) GetMsgSent() int                   { return 0 }
-func (f *fakeHandlerContext) GetMsgRecv() int                   { return 0 }
-func (f *fakeHandlerContext) UpdateHeader()                     {}
-func (f *fakeHandlerContext) GetWidth() int                     { return 80 }
-func (f *fakeHandlerContext) CloseGateway() error               { return nil }
-func (f *fakeHandlerContext) Reconnect(_ context.Context) error { return nil }
+func (f *fakeHandlerContext) AppendSystemMessage(msg string)             { f.msgs = append(f.msgs, msg) }
+func (f *fakeHandlerContext) ClearMessages()                             {}
+func (f *fakeHandlerContext) GetAgent() string                           { return f.agent }
+func (f *fakeHandlerContext) SetAgent(name string)                       { f.agent = name }
+func (f *fakeHandlerContext) GetSession() string                         { return f.session }
+func (f *fakeHandlerContext) SetSession(key string)                      { f.session = key }
+func (f *fakeHandlerContext) GetModel() string                           { return f.model }
+func (f *fakeHandlerContext) SetModel(model string)                      { f.model = model }
+func (f *fakeHandlerContext) GetThinking() string                        { return f.thinking }
+func (f *fakeHandlerContext) SetThinking(level string)                   { f.thinking = level }
+func (f *fakeHandlerContext) GetTimeoutMs() int                          { return f.timeoutMs }
+func (f *fakeHandlerContext) SetTimeoutMs(ms int)                        { f.timeoutMs = ms }
+func (f *fakeHandlerContext) GetGatewayURL() string                      { return "ws://localhost:0" }
+func (f *fakeHandlerContext) IsConnected() bool                          { return f.connected }
+func (f *fakeHandlerContext) GetVersion() string                         { return "0.0.0-test" }
+func (f *fakeHandlerContext) GetUptime() time.Duration                   { return 0 }
+func (f *fakeHandlerContext) GetMsgSent() int                            { return 0 }
+func (f *fakeHandlerContext) GetMsgRecv() int                            { return 0 }
+func (f *fakeHandlerContext) UpdateHeader()                              {}
+func (f *fakeHandlerContext) GetWidth() int                              { return 80 }
+func (f *fakeHandlerContext) CloseGateway() error                        { return nil }
+func (f *fakeHandlerContext) Reconnect(_ context.Context) error          { return nil }
+func (f *fakeHandlerContext) GetSessionKey() string                      { return "agent:" + f.agent + ":" + f.session }
+func (f *fakeHandlerContext) PatchSession(_ commands.SessionPatch) error { return nil }
 func (f *fakeHandlerContext) RequestHistory(key string) error {
 	f.histReqs = append(f.histReqs, key)
 	return nil
@@ -244,7 +254,7 @@ func TestModelPropagation(t *testing.T) {
 	defer client.Close()
 
 	ctx := newFakeCtx("marvin", "main")
-	commands.HandleModel(ctx, []string{"gpt-4-turbo"})
+	execCmd(commands.HandleModel(ctx, []string{"gpt-4-turbo"}))
 	assert.Equal(t, "gpt-4-turbo", ctx.model)
 
 	frame := sendChatMsg(t, client, mockGW, gateway.ChatSendParams{
@@ -267,7 +277,7 @@ func TestThinkingPropagation(t *testing.T) {
 	defer client.Close()
 
 	ctx := newFakeCtx("marvin", "main")
-	commands.HandleThinking(ctx, []string{"high"})
+	execCmd(commands.HandleThinking(ctx, []string{"high"}))
 	assert.Equal(t, "high", ctx.thinking)
 
 	frame := sendChatMsg(t, client, mockGW, gateway.ChatSendParams{
@@ -308,8 +318,8 @@ func TestTimeoutPropagation(t *testing.T) {
 // /clear only removes displayed messages, not session state.
 func TestStateSurvivesClear(t *testing.T) {
 	ctx := newFakeCtx("marvin", "main")
-	commands.HandleModel(ctx, []string{"gpt-4-turbo"})
-	commands.HandleThinking(ctx, []string{"high"})
+	execCmd(commands.HandleModel(ctx, []string{"gpt-4-turbo"}))
+	execCmd(commands.HandleThinking(ctx, []string{"high"}))
 	commands.HandleTimeout(ctx, []string{"120000"})
 
 	// Simulate /clear by calling ClearMessages directly

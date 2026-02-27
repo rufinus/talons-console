@@ -32,27 +32,29 @@ func (m *reconnectMockCtx) Reconnect(ctx context.Context) error {
 
 // -- no-op stubs to satisfy HandlerContext --
 
-func (m *reconnectMockCtx) ClearMessages()                {}
-func (m *reconnectMockCtx) GetAgent() string              { return "" }
-func (m *reconnectMockCtx) SetAgent(_ string)             {}
-func (m *reconnectMockCtx) GetSession() string            { return "" }
-func (m *reconnectMockCtx) SetSession(_ string)           {}
-func (m *reconnectMockCtx) GetModel() string              { return "" }
-func (m *reconnectMockCtx) SetModel(_ string)             {}
-func (m *reconnectMockCtx) GetThinking() string           { return "" }
-func (m *reconnectMockCtx) SetThinking(_ string)          {}
-func (m *reconnectMockCtx) GetTimeoutMs() int             { return 0 }
-func (m *reconnectMockCtx) SetTimeoutMs(_ int)            {}
-func (m *reconnectMockCtx) GetGatewayURL() string         { return "" }
-func (m *reconnectMockCtx) IsConnected() bool             { return false }
-func (m *reconnectMockCtx) GetVersion() string            { return "" }
-func (m *reconnectMockCtx) GetUptime() time.Duration      { return 0 }
-func (m *reconnectMockCtx) GetMsgSent() int               { return 0 }
-func (m *reconnectMockCtx) GetMsgRecv() int               { return 0 }
-func (m *reconnectMockCtx) RequestHistory(_ string) error { return nil }
-func (m *reconnectMockCtx) CloseGateway() error           { return nil }
-func (m *reconnectMockCtx) UpdateHeader()                 {}
-func (m *reconnectMockCtx) GetWidth() int                 { return 80 }
+func (m *reconnectMockCtx) ClearMessages()                    {}
+func (m *reconnectMockCtx) GetAgent() string                  { return "" }
+func (m *reconnectMockCtx) SetAgent(_ string)                 {}
+func (m *reconnectMockCtx) GetSession() string                { return "" }
+func (m *reconnectMockCtx) SetSession(_ string)               {}
+func (m *reconnectMockCtx) GetModel() string                  { return "" }
+func (m *reconnectMockCtx) SetModel(_ string)                 {}
+func (m *reconnectMockCtx) GetThinking() string               { return "" }
+func (m *reconnectMockCtx) SetThinking(_ string)              {}
+func (m *reconnectMockCtx) GetTimeoutMs() int                 { return 0 }
+func (m *reconnectMockCtx) SetTimeoutMs(_ int)                {}
+func (m *reconnectMockCtx) GetGatewayURL() string             { return "" }
+func (m *reconnectMockCtx) IsConnected() bool                 { return false }
+func (m *reconnectMockCtx) GetVersion() string                { return "" }
+func (m *reconnectMockCtx) GetUptime() time.Duration          { return 0 }
+func (m *reconnectMockCtx) GetMsgSent() int                   { return 0 }
+func (m *reconnectMockCtx) GetMsgRecv() int                   { return 0 }
+func (m *reconnectMockCtx) RequestHistory(_ string) error     { return nil }
+func (m *reconnectMockCtx) CloseGateway() error               { return nil }
+func (m *reconnectMockCtx) UpdateHeader()                     {}
+func (m *reconnectMockCtx) GetWidth() int                     { return 80 }
+func (m *reconnectMockCtx) GetSessionKey() string             { return "agent:main:main" }
+func (m *reconnectMockCtx) PatchSession(_ SessionPatch) error { return nil }
 
 // --- success path ---
 

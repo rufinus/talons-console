@@ -198,6 +198,14 @@ func (c *Client) RequestHistory(sessionKey string) error {
 	return c.sendHistoryRequest(sessionKey, conn)
 }
 
+// PatchSession sends a sessions.patch request to the Gateway.
+func (c *Client) PatchSession(params SessionsPatchParams) error {
+	return c.Send(OutboundMessage{
+		Type:    "sessions.patch",
+		Payload: params,
+	})
+}
+
 // Reconnect performs a single close + 100ms sleep + reconnect attempt.
 // The caller is responsible for enforcing an overall timeout via ctx.
 // This method does NOT implement retry/backoff — that is the automatic

@@ -26,12 +26,12 @@ func newTestClient(t *testing.T, cfg ClientConfig, mock *MockWebSocketConn) *Cli
 	return c
 }
 
-// buildChatDelta returns a JSON chat.event with state=delta.
+// buildChatDelta returns a JSON chat event with state=delta.
 func buildChatDelta(t *testing.T, content string) []byte {
 	t.Helper()
 	f := InboundFrame{
 		Type:  "event",
-		Event: "chat.event",
+		Event: "chat",
 		Payload: mustJSON(t, ChatEventPayload{
 			State:   "delta",
 			Message: &ChatEventMsg{Role: "assistant", Content: content},
@@ -40,12 +40,12 @@ func buildChatDelta(t *testing.T, content string) []byte {
 	return mustJSON(t, f)
 }
 
-// buildChatFinal returns a JSON chat.event with state=final.
+// buildChatFinal returns a JSON chat event with state=final.
 func buildChatFinal(t *testing.T, content string) []byte {
 	t.Helper()
 	f := InboundFrame{
 		Type:  "event",
-		Event: "chat.event",
+		Event: "chat",
 		Payload: mustJSON(t, ChatEventPayload{
 			State:   "final",
 			Message: &ChatEventMsg{Role: "assistant", Content: content},
