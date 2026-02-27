@@ -81,14 +81,14 @@ func TestAgentIntegration(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
-	// Send a chat message carrying an explicit agentId — mirrors what
-	// HandleAgent + a subsequent Send would produce.
+	// Send a chat message using the session key for a different agent — mirrors
+	// what HandleAgent + a subsequent Send would produce.
 	msg := gateway.OutboundMessage{
 		Type: "chat.send",
 		Payload: gateway.ChatSendParams{
-			Content: "integration-test agent probe",
-			AgentID: "integration-test-2",
-			Deliver: false,
+			Message:    "integration-test agent probe",
+			SessionKey: "agent:integration-test-2:main",
+			Deliver:    false,
 		},
 	}
 	if err := client.Send(msg); err != nil {
@@ -126,7 +126,7 @@ func TestSessionIntegration(t *testing.T) {
 	msg := gateway.OutboundMessage{
 		Type: "chat.send",
 		Payload: gateway.ChatSendParams{
-			Content:    "integration-test session probe",
+			Message:    "integration-test session probe",
 			SessionKey: "integration-session-b",
 			Deliver:    false,
 		},
@@ -144,34 +144,47 @@ func TestSessionIntegration(t *testing.T) {
 	}
 }
 
-// TestModelIntegration verifies that the Gateway accepts a chat.send frame
-// that includes a model override (or at least does not close the connection).
+// TestModelIntegration verifies that the Gateway accepts a sessions.patch frame
+// with a model override and that subsequent chat.send works without error.
 func TestModelIntegration(t *testing.T) {
 	gatewayURL, token := skipIfNotConfigured(t)
 
-	client := newTestClient(t, gatewayURL, token, "", "")
+	client := newTestClient(t, gatewayURL, token, "integration-test", "model-probe")
 
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 
-	msg := gateway.OutboundMessage{
-		Type: "chat.send",
-		Payload: gateway.ChatSendParams{
-			Content: "integration-test model probe",
-			Model:   "claude-3-5-haiku-20241022",
-			Deliver: false,
+	// Set model via sessions.patch — this is the correct approach.
+	modelID := "claude-3-5-haiku-20241022"
+	patchMsg := gateway.OutboundMessage{
+		Type: "sessions.patch",
+		Payload: gateway.SessionsPatchParams{
+			Key:   "agent:integration-test:model-probe",
+			Model: &modelID,
 		},
 	}
-	if err := client.Send(msg); err != nil {
-		t.Fatalf("Send with model override failed: %v", err)
+	if err := client.Send(patchMsg); err != nil {
+		t.Fatalf("sessions.patch with model failed: %v", err)
+	}
+
+	// Now send a chat message (no model field on ChatSendParams).
+	chatMsg := gateway.OutboundMessage{
+		Type: "chat.send",
+		Payload: gateway.ChatSendParams{
+			Message:    "integration-test model probe",
+			SessionKey: "agent:integration-test:model-probe",
+			Deliver:    false,
+		},
+	}
+	if err := client.Send(chatMsg); err != nil {
+		t.Fatalf("chat.send after model patch failed: %v", err)
 	}
 
 	select {
 	case <-ctx.Done():
 		t.Skip("Gateway did not respond within timeout — skipping")
 	case evt := <-client.Messages():
-		// A KindError means the model was unknown but the Gateway stayed up,
-		// which satisfies the requirement: "responds without error if model is ignored".
+		// A KindError means the model was unknown but the Gateway stayed up.
 		t.Logf("Gateway response kind: %v", evt.Kind)
 	}
 }
@@ -220,7 +233,7 @@ func TestReconnectIntegration(t *testing.T) {
 	msg := gateway.OutboundMessage{
 		Type: "chat.send",
 		Payload: gateway.ChatSendParams{
-			Content: "integration-test reconnect probe",
+			Message: "integration-test reconnect probe",
 			Deliver: false,
 		},
 	}

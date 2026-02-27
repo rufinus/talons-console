@@ -39,6 +39,13 @@ type ChatSendParams struct {
 	IdempotencyKey string `json:"idempotencyKey"`
 }
 
+// SessionsPatchParams is the params block for the sessions.patch method.
+type SessionsPatchParams struct {
+	Key           string  `json:"key"`
+	Model         *string `json:"model,omitempty"`         // null to clear, string to set
+	ThinkingLevel *string `json:"thinkingLevel,omitempty"` // null to clear, string to set
+}
+
 // HistoryParams is the params block for the chat.history method.
 type HistoryParams struct {
 	SessionKey string `json:"sessionKey"`
